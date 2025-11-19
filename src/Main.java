@@ -6,27 +6,24 @@ import java.util.Scanner;
 public class Main {
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
-        StudentDAO studentDAO = new StudentDAO();
+        //StudentDAO studentDAO = new StudentDAO();
 
-        System.out.println("--- STUDENT LOGIN ---");
-        System.out.print("Enter Email: ");
-        String email = scanner.nextLine();
+        // Inside your main method:
+        StudentDAO dao = new StudentDAO();
 
-        System.out.print("Enter Password: ");
-        String password = scanner.nextLine();
+        // 1. Signup Test
+//        boolean isRegistered = dao.signup("John", "Doe", "john.doe@gmail.com", "P@ssword123");
+//        if (isRegistered) System.out.println("Signup Success!");
 
-        // Attempt Login
-        Student currentUser = studentDAO.login(email, password);
+        // 2. Login Test
+        Student student = dao.login("john.doe@gmail.com", "P@ssword123");
 
-        if (currentUser != null) {
-            System.out.println("Login Successful!");
-            System.out.println(currentUser.toString());
+        if (student != null) {
+            // 3. Add Course (Assuming CS101 exists in DB)
+            //dao.enrollCourse(student.getStudentId(), "CS101", "Spring", 2025);
 
-            // Here you would open your Student Dashboard Menu...
-        } else {
-            System.out.println("Invalid email or password.");
+            // 4. Drop Course
+            dao.dropCourse(student.getStudentId(), "CS101");
         }
-
-        scanner.close();
     }
 }

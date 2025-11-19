@@ -58,27 +58,27 @@ public class Register {
         return password;
     }
 
-    public boolean isValidFirstName(String firstName){
+    public static boolean isValidFirstName(String firstName){
         String regexFN = "(^[A-Z][a-z]+$)";
         return firstName.matches(regexFN);
     }
 
-    public boolean isValidLastName(String lastName){
+    public static boolean isValidLastName(String lastName){
         String regexLN = "(^[A-Z][a-z]+$)";
         return lastName.matches(regexLN);
     }
 
-    public boolean isValidUsername(String username){
+    public static boolean isValidUsername(String username){
         String regexUN = "^[A-Za-z0-9@_-]{4,20}$";
         return username.matches(regexUN);
     }
 
-    public boolean isValidEmail(String email){
+    public static boolean isValidEmail(String email){
         String regexEm = "^[A-Za-z0-9._%+-]+@(gmail|yahoo|hotmail)\\.com$";
         return email.matches(regexEm);
     }
 
-    public boolean isValidPassword(String password) {
+    public static boolean isValidPassword(String password) {
         int MIN_LENGTH = 8;
         String SPECIAL_CHARS = "@!#$%^&*()+\\-_";
         String regexPass = "(?=.*[A-Z])" + "(?=.*[a-z])" + "(?=.*[0-9])" + "(?=.*[" + SPECIAL_CHARS + "])" + "[A-Za-z0-9" + SPECIAL_CHARS + "]{" + MIN_LENGTH + ",}";

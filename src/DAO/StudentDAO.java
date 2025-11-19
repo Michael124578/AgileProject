@@ -2,7 +2,6 @@ package DAO;
 
 
 import Model.*;
-//import DAO.DatabaseManager;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -11,21 +10,20 @@ import java.sql.SQLException;
 
 public class StudentDAO {
 
-    // Returns a Student object if login succeeds, null if it fails
+    // ==========================================
+    // 1. LOGIN
+    // ==========================================
     public Student login(String email, String password) {
         String sql = "SELECT StudentID, FirstName, LastName, Email FROM Students WHERE Email = ? AND Password = ?";
 
-        // Try-with-resources ensures the Connection closes automatically
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
-            // Set the parameters (the ? marks in the SQL)
             pstmt.setString(1, email);
             pstmt.setString(2, password);
 
             try (ResultSet rs = pstmt.executeQuery()) {
                 if (rs.next()) {
-                    // Login Success! Map the database row to a Java Object
                     return new Student(
                             rs.getInt("StudentID"),
                             rs.getString("FirstName"),
@@ -36,9 +34,142 @@ public class StudentDAO {
             }
         } catch (SQLException e) {
             System.err.println("Login Error: " + e.getMessage());
-            e.printStackTrace();
+        }
+        return null;
+    }
+
+    // ==========================================
+    // 2. SIGNUP (Register)
+    // ==========================================
+    public boolean signup(String firstName, String lastName, String email, String password) {
+
+        // A. Validate Inputs using Register Class
+        if (!Register.isValidFirstName(firstName)) {
+            System.out.println("Error: Invalid First Name (Must start with Capital).");
+            return false;
+        }
+        if (!Register.isValidLastName(lastName)) {
+            System.out.println("Error: Invalid Last Name.");
+            return false;
+        }
+        if (!Register.isValidEmail(email)) {
+            System.out.println("Error: Invalid Email Format.");
+            return false;
+        }
+        if (!Register.isValidPassword(password)) {
+            System.out.println("Error: Password must be 8+ chars, contain uppercase, lowercase, number, and special char.");
+            return false;
         }
 
-        return null; // Login failed
+        // B. Insert into Database
+        String sql = "INSERT INTO Students (FirstName, LastName, Email, Password, EnrollmentDate) VALUES (?, ?, ?, ?, GETDATE())";
+
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, firstName);
+            pstmt.setString(2, lastName);
+            pstmt.setString(3, email);
+            pstmt.setString(4, password);
+
+            int rowsAffected = pstmt.executeUpdate();
+            return rowsAffected > 0; // Returns true if insert was successful
+
+        } catch (SQLException e) {
+            // Handle duplicate email error specifically
+            if (e.getErrorCode() == 2627) {
+                System.err.println("Error: This email is already registered.");
+            } else {
+                System.err.println("Signup Error: " + e.getMessage());
+            }
+            return false;
+        }
+    }
+
+    // ==========================================
+    // 3. ADD COURSE (Enroll)
+    // ==========================================
+    public boolean enrollCourse(int studentId, String courseCode, String semester, int year) {
+        // Step 1: Get CourseID from the Code (e.g., 'CS101' -> 1)
+        int courseId = getCourseId(courseCode);
+        if (courseId == -1) {
+            System.out.println("Error: Course code '" + courseCode + "' not found.");
+            return false;
+        }
+
+        // Step 2: Insert into Enrollments
+        String sql = "INSERT INTO Enrollments (StudentID, CourseID, Semester, Year, EnrollmentDate) VALUES (?, ?, ?, ?, GETDATE())";
+
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setInt(1, studentId);
+            pstmt.setInt(2, courseId);
+            pstmt.setString(3, semester);
+            pstmt.setInt(4, year);
+
+            pstmt.executeUpdate();
+            System.out.println("Successfully enrolled in " + courseCode);
+            return true;
+
+        } catch (SQLException e) {
+            System.err.println("Enrollment Error: " + e.getMessage());
+            return false;
+        }
+    }
+
+    // ==========================================
+    // 4. DROP COURSE
+    // ==========================================
+    public boolean dropCourse(int studentId, String courseCode) {
+        // Step 1: Get CourseID
+        int courseId = getCourseId(courseCode);
+        if (courseId == -1) {
+            System.out.println("Error: Course code not found.");
+            return false;
+        }
+
+        // Step 2: Delete from Enrollments
+        String sql = "DELETE FROM Enrollments WHERE StudentID = ? AND CourseID = ?";
+
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setInt(1, studentId);
+            pstmt.setInt(2, courseId);
+
+            int rowsAffected = pstmt.executeUpdate();
+            if (rowsAffected > 0) {
+                System.out.println("Successfully dropped " + courseCode);
+                return true;
+            } else {
+                System.out.println("Error: You are not enrolled in this course.");
+                return false;
+            }
+
+        } catch (SQLException e) {
+            System.err.println("Drop Error: " + e.getMessage());
+            return false;
+        }
+    }
+
+    // ==========================================
+    // HELPER: Get CourseID from CourseCode
+    // ==========================================
+    private int getCourseId(String courseCode) {
+        String sql = "SELECT CourseID FROM Courses WHERE CourseCode = ?";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, courseCode);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt("CourseID");
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return -1; // Not found
     }
 }

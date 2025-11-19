@@ -1,3 +1,5 @@
+package Model;
+
 public class Register {
     String firstName;
     String lastName;

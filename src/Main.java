@@ -1,28 +1,32 @@
+import Model.*;
+import DAO.*;
+
 import java.util.Scanner;
 
 public class Main {
     public static void main(String[] args) {
-        Scanner cin = new Scanner(System.in);
-        Register registerHandler = new Register();
+        Scanner scanner = new Scanner(System.in);
+        StudentDAO studentDAO = new StudentDAO();
 
-        System.out.println("Enter your First Name: ");
-        String firstName = cin.nextLine();
-        System.out.println("Enter your Last Name: ");
-        String lastName = cin.nextLine();
-        System.out.println("Enter your UserName: ");
-        String userName = cin.nextLine();
-        System.out.println("Enter your Email: ");
-        String email = cin.nextLine();
-        System.out.println("Enter your Password: ");
-        String password = cin.nextLine();
+        System.out.println("--- STUDENT LOGIN ---");
+        System.out.print("Enter Email: ");
+        String email = scanner.nextLine();
 
-        if(registerHandler.isValidFirstName(firstName) && registerHandler.isValidLastName(lastName) &&
-                registerHandler.isValidUsername(userName) && registerHandler.isValidEmail(email) &&
-                registerHandler.isValidPassword(password)){
-            System.out.println("Valid Entry");
+        System.out.print("Enter Password: ");
+        String password = scanner.nextLine();
+
+        // Attempt Login
+        Student currentUser = studentDAO.login(email, password);
+
+        if (currentUser != null) {
+            System.out.println("Login Successful!");
+            System.out.println(currentUser.toString());
+
+            // Here you would open your Student Dashboard Menu...
+        } else {
+            System.out.println("Invalid email or password.");
         }
-        else{
-            System.out.println("Invalid Entry");
-        }
+
+        scanner.close();
     }
 }

@@ -164,7 +164,7 @@ public class LoginScreen {
             if (teacher != null) {
                 messageLabel.setText("Login Success! Welcome Prof. " + teacher.getLastName());
                 messageLabel.setTextFill(Color.GREEN);
-                // TODO: Open Teacher Dashboard
+                new TeacherDashboard().show(stage, teacher);
                 return;
             }
 

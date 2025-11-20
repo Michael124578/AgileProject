@@ -1,0 +1,9 @@
+DAO\AdminDAO.class
+UI\MainApp.class
+DAO\TeacherDAO.class
+Model\Register.class
+Model\Student.class
+Model\Teacher.class
+DAO\StudentDAO.class
+Model\Admin.class
+DAO\DatabaseManager.class

@@ -32,7 +32,7 @@ public class LoginScreen {
         VBox leftPane = new VBox(20); // 20px vertical spacing
         leftPane.setPadding(new Insets(40, 60, 40, 60));
         leftPane.setPrefWidth(500);
-        leftPane.setAlignment(Pos.CENTER_LEFT);
+        leftPane.setAlignment(Pos.CENTER);
         leftPane.setStyle("-fx-background-color: #f9f9f9;");
 
         // --- A. Logo ---
@@ -86,13 +86,13 @@ public class LoginScreen {
         loginBtn.setPrefSize(400, 45);
         loginBtn.setStyle("-fx-background-color: #6a5acd; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 16px; -fx-background-radius: 25; -fx-cursor: hand;");
 
-        // --- F. "OR" Separator ---
-        HBox orSeparator = new HBox(10);
-        orSeparator.setAlignment(Pos.CENTER);
-        Pane line1 = new Pane(); line1.setPrefHeight(1); line1.setStyle("-fx-background-color: #ccc;"); HBox.setHgrow(line1, Priority.ALWAYS);
-        Label orLbl = new Label("or"); orLbl.setTextFill(Color.GRAY);
-        Pane line2 = new Pane(); line2.setPrefHeight(1); line2.setStyle("-fx-background-color: #ccc;"); HBox.setHgrow(line2, Priority.ALWAYS);
-        orSeparator.getChildren().addAll(line1, orLbl, line2);
+//        // --- F. "OR" Separator ---
+//        HBox orSeparator = new HBox(10);
+//        orSeparator.setAlignment(Pos.CENTER);
+//        Pane line1 = new Pane(); line1.setPrefHeight(1); line1.setStyle("-fx-background-color: #ccc;"); HBox.setHgrow(line1, Priority.ALWAYS);
+//        Label orLbl = new Label("or"); orLbl.setTextFill(Color.GRAY);
+//        Pane line2 = new Pane(); line2.setPrefHeight(1); line2.setStyle("-fx-background-color: #ccc;"); HBox.setHgrow(line2, Priority.ALWAYS);
+//        orSeparator.getChildren().addAll(line1, orLbl, line2);
 
         // --- G. Links ---
         Hyperlink forgotPassLink = new Hyperlink("Can Not Sign In? Press Here");
@@ -103,7 +103,7 @@ public class LoginScreen {
         signupBtn.setStyle("-fx-background-color: #28a745; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 16px; -fx-background-radius: 25; -fx-cursor: hand;");
 
         // Add everything to Left Pane
-        leftPane.getChildren().addAll(logoView, titleLabel, descLabel, messageLabel, emailContainer, passContainer, loginBtn, orSeparator, forgotPassLink, signupBtn);
+        leftPane.getChildren().addAll(logoView, titleLabel, descLabel, messageLabel, emailContainer, passContainer, loginBtn, /*orSeparator,*/ forgotPassLink, signupBtn);
 
         // ==========================================
         // 2. RIGHT PANE: The Background Image

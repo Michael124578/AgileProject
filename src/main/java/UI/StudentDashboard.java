@@ -495,8 +495,13 @@ public class StudentDashboard {
 
         // 1. Title & Back Button
         Button backBtn = new Button("← Back");
-        backBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #2c3e50; -fx-font-size: 14px; -fx-cursor: hand;");
-        backBtn.setOnAction(e -> root.setCenter(createMainContent(student, root)));
+        backBtn.setStyle(
+                "-fx-background-color: #d3d3d3;" +
+                        "-fx-text-fill: #2c3e50;" +
+                        "-fx-font-size: 16px;" +
+                        "-fx-font-weight: bold;" +
+                        "-fx-cursor: hand;"
+        );        backBtn.setOnAction(e -> root.setCenter(createMainContent(student, root)));
 
         Label title = new Label("My Enrolled Courses");
         title.setFont(Font.font("Segoe UI", FontWeight.LIGHT, 28));

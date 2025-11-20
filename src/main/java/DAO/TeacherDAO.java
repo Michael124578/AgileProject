@@ -111,18 +111,31 @@ public class TeacherDAO {
     // 2. Get Courses Taught by this Teacher
     public List<Course> getTeacherCourses(int teacherId) {
         List<Course> list = new ArrayList<>();
-        String sql = "SELECT c.* FROM Courses c JOIN TeacherAssignments ta ON c.CourseID = ta.CourseID WHERE ta.TeacherID = ?";
+
+        // Fetch Schedule Columns as well
+        String sql = "SELECT c.CourseID, c.CourseCode, c.CourseName, c.Credits, " +
+                "c.DayOfWeek, c.StartTime, c.EndTime, c.RoomNumber " +
+                "FROM Courses c " +
+                "JOIN TeacherAssignments ta ON c.CourseID = ta.CourseID " +
+                "WHERE ta.TeacherID = ?";
 
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
             pstmt.setInt(1, teacherId);
             ResultSet rs = pstmt.executeQuery();
+
             while (rs.next()) {
                 list.add(new Course(
                         rs.getInt("CourseID"),
                         rs.getString("CourseCode"),
                         rs.getString("CourseName"),
-                        rs.getInt("Credits")
+                        rs.getInt("Credits"),
+                        // Map the new Schedule fields
+                        rs.getString("DayOfWeek"),
+                        rs.getString("StartTime"),
+                        rs.getString("EndTime"),
+                        rs.getString("RoomNumber")
                 ));
             }
         } catch (SQLException e) { e.printStackTrace(); }
@@ -165,6 +178,39 @@ public class TeacherDAO {
             pstmt.setInt(3, courseId);
             return pstmt.executeUpdate() > 0;
         } catch (SQLException e) { e.printStackTrace(); return false; }
+    }
+
+    // 6. Get Grade Statistics for a Course
+    // Returns a Map or simple int array: [A_count, B_count, C_count, D_count, F_count]
+    public int[] getGradeDistribution(int courseId) {
+        int[] stats = new int[5]; // 0=A, 1=B, 2=C, 3=D, 4=F
+
+        // Efficient SQL to categorize grades in one go
+        String sql = "SELECT " +
+                "SUM(CASE WHEN Grade >= 90 THEN 1 ELSE 0 END) AS A, " +
+                "SUM(CASE WHEN Grade >= 80 AND Grade < 90 THEN 1 ELSE 0 END) AS B, " +
+                "SUM(CASE WHEN Grade >= 70 AND Grade < 80 THEN 1 ELSE 0 END) AS C, " +
+                "SUM(CASE WHEN Grade >= 60 AND Grade < 70 THEN 1 ELSE 0 END) AS D, " +
+                "SUM(CASE WHEN Grade < 60 THEN 1 ELSE 0 END) AS F " +
+                "FROM Enrollments WHERE CourseID = ? AND Grade IS NOT NULL";
+
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setInt(1, courseId);
+            ResultSet rs = pstmt.executeQuery();
+
+            if (rs.next()) {
+                stats[0] = rs.getInt("A");
+                stats[1] = rs.getInt("B");
+                stats[2] = rs.getInt("C");
+                stats[3] = rs.getInt("D");
+                stats[4] = rs.getInt("F");
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return stats;
     }
 
 }

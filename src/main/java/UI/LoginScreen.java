@@ -174,7 +174,7 @@ public class LoginScreen {
             if (admin != null) {
                 messageLabel.setText("Login Success! Welcome Admin " + admin.getUsername());
                 messageLabel.setTextFill(Color.GREEN);
-                // TODO: Open Admin Dashboard
+                new AdminDashboard().show(stage, admin);
                 return;
             }
 

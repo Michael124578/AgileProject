@@ -90,6 +90,7 @@ public class TeacherDashboard {
         // C. Menu Buttons
         VBox navMenu = new VBox(5);
         Button dashBtn = createNavButton("My Courses", true);
+        Button scheduleBtn = createNavButton("My Schedule", false);
         Button profileBtn = createNavButton("My Profile", false); // NEW
         Button logoutBtn = createNavButton("Logout", false);
 
@@ -97,6 +98,11 @@ public class TeacherDashboard {
         dashBtn.setOnAction(e -> {
             root.setCenter(createMainContent(teacher, root));
             setActive(dashBtn, profileBtn, logoutBtn);
+        });
+
+        scheduleBtn.setOnAction(e -> {
+            root.setCenter(createScheduleView(teacher, root));
+            setActive(scheduleBtn, dashBtn, profileBtn, logoutBtn);
         });
 
         profileBtn.setOnAction(e -> {
@@ -110,9 +116,103 @@ public class TeacherDashboard {
             try { new LoginScreen().show(new Stage()); } catch (Exception ex) {}
         });
 
-        navMenu.getChildren().addAll(dashBtn, profileBtn, logoutBtn);
+        navMenu.getChildren().addAll(dashBtn,scheduleBtn, profileBtn, logoutBtn);
         sidebar.getChildren().addAll(profilePic, nameLabel, deptLabel, new Region(), navMenu);
         return sidebar;
+    }
+
+    private VBox createScheduleView(Teacher teacher, BorderPane root) {
+        VBox content = new VBox(20);
+        content.setPadding(new Insets(30));
+        content.setAlignment(Pos.TOP_LEFT);
+
+        // Header
+        Label title = new Label("My Class Schedule");
+        title.setFont(Font.font("Segoe UI", FontWeight.LIGHT, 28));
+        title.setTextFill(Color.web("#2c3e50"));
+
+        // The Weekly Grid (5 Columns)
+        HBox weekGrid = new HBox(15);
+        weekGrid.setAlignment(Pos.TOP_CENTER);
+
+        VBox monCol = createDayColumn("Monday");
+        VBox tueCol = createDayColumn("Tuesday");
+        VBox wedCol = createDayColumn("Wednesday");
+        VBox thuCol = createDayColumn("Thursday");
+        VBox friCol = createDayColumn("Friday");
+
+        // Fetch Data
+        TeacherDAO dao = new TeacherDAO();
+        List<Course> courses = dao.getTeacherCourses(teacher.getTeacherId());
+
+        for (Course c : courses) {
+            if (c.getDayOfWeek() == null || c.getDayOfWeek().isEmpty()) continue;
+
+            Pane card = createClassCard(c);
+
+            // Sort into correct column
+            switch (c.getDayOfWeek()) {
+                case "Monday": monCol.getChildren().add(card); break;
+                case "Tuesday": tueCol.getChildren().add(card); break;
+                case "Wednesday": wedCol.getChildren().add(card); break;
+                case "Thursday": thuCol.getChildren().add(card); break;
+                case "Friday": friCol.getChildren().add(card); break;
+            }
+        }
+
+        HBox.setHgrow(monCol, Priority.ALWAYS);
+        HBox.setHgrow(tueCol, Priority.ALWAYS);
+        HBox.setHgrow(wedCol, Priority.ALWAYS);
+        HBox.setHgrow(thuCol, Priority.ALWAYS);
+        HBox.setHgrow(friCol, Priority.ALWAYS);
+
+        weekGrid.getChildren().addAll(monCol, tueCol, wedCol, thuCol, friCol);
+        content.getChildren().addAll(title, weekGrid);
+        return content;
+    }
+
+    // Helper: Create Column
+    private VBox createDayColumn(String dayName) {
+        VBox col = new VBox(10);
+        col.setPadding(new Insets(10));
+        col.setStyle("-fx-background-color: #ecf0f1; -fx-background-radius: 5;");
+        col.setPrefHeight(500);
+
+        Label header = new Label(dayName);
+        header.setFont(Font.font("Segoe UI", FontWeight.BOLD, 14));
+        header.setTextFill(Color.web("#7f8c8d"));
+        header.setAlignment(Pos.CENTER);
+        header.setMaxWidth(Double.MAX_VALUE);
+
+        col.getChildren().add(header);
+        return col;
+    }
+
+    // Helper: Create Card
+    private Pane createClassCard(Course c) {
+        VBox card = new VBox(5);
+        card.setPadding(new Insets(15));
+        // Green border for teachers to distinguish from student view
+        card.setStyle("-fx-background-color: white; -fx-background-radius: 5; -fx-border-color: #27ae60; -fx-border-width: 0 0 0 5; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 5, 0, 0, 2);");
+
+        Label code = new Label(c.getCourseCode());
+        code.setFont(Font.font("Segoe UI", FontWeight.BOLD, 14));
+        code.setTextFill(Color.web("#2c3e50"));
+
+        Label name = new Label(c.getCourseName());
+        name.setFont(Font.font("Segoe UI", 12));
+        name.setWrapText(true);
+
+        Label time = new Label("🕒 " + c.getStartTime() + " - " + c.getEndTime());
+        time.setFont(Font.font("Segoe UI", 11));
+        time.setTextFill(Color.web("#7f8c8d"));
+
+        Label room = new Label("📍 " + c.getRoomNumber());
+        room.setFont(Font.font("Segoe UI", 11));
+        room.setTextFill(Color.web("#7f8c8d"));
+
+        card.getChildren().addAll(code, name, new Separator(), time, room);
+        return card;
     }
 
     // 3. Main Content
@@ -141,18 +241,33 @@ public class TeacherDashboard {
     // 4. Course Card
     private Pane createCourseCard(Teacher teacher, Course course, BorderPane root) {
         VBox card = new VBox(10);
-        card.setPrefSize(250, 150);
+        card.setPrefSize(260, 180); // Made slightly taller for 2 buttons
         card.setPadding(new Insets(20));
-        card.setStyle("-fx-background-color: white; -fx-background-radius: 8; -fx-cursor: hand; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 5, 0, 0, 2);");
+        card.setStyle("-fx-background-color: white; -fx-background-radius: 8; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 5, 0, 0, 2);");
 
         Label code = new Label(course.getCourseCode());
         code.setFont(Font.font("Segoe UI", FontWeight.BOLD, 20));
         code.setTextFill(Color.web("#3498db"));
+
         Label name = new Label(course.getCourseName());
         name.setWrapText(true);
+        name.setFont(Font.font("Segoe UI", 14));
 
-        card.setOnMouseClicked(e -> root.setCenter(createGradingView(teacher, course, root)));
-        card.getChildren().addAll(code, name, new Separator(), new Label("Click to Grade →"));
+        // --- BUTTONS ---
+        HBox btnBox = new HBox(10);
+        btnBox.setAlignment(Pos.CENTER);
+
+        Button gradeBtn = new Button("Grades");
+        gradeBtn.setStyle("-fx-background-color: #2c3e50; -fx-text-fill: white; -fx-cursor: hand;");
+        gradeBtn.setOnAction(e -> root.setCenter(createGradingView(teacher, course, root)));
+
+        Button statsBtn = new Button("Stats");
+        statsBtn.setStyle("-fx-background-color: #e67e22; -fx-text-fill: white; -fx-cursor: hand;"); // Orange button
+        statsBtn.setOnAction(e -> root.setCenter(createStatisticsView(teacher, course, root)));
+
+        btnBox.getChildren().addAll(gradeBtn, statsBtn);
+
+        card.getChildren().addAll(code, name, new Separator(), btnBox);
         return card;
     }
 
@@ -316,6 +431,63 @@ public class TeacherDashboard {
                 saveBtn,
                 statusLabel
         );
+        return content;
+    }
+
+    // =========================================
+    // 7. NEW: Statistics View (Pie Chart)
+    // =========================================
+    private VBox createStatisticsView(Teacher teacher, Course course, BorderPane root) {
+        VBox content = new VBox(20);
+        content.setPadding(new Insets(30));
+        content.setAlignment(Pos.TOP_CENTER);
+
+        // Header with Back Button
+        HBox header = new HBox(15);
+        header.setAlignment(Pos.CENTER_LEFT);
+        Button backBtn = new Button("← Back");
+        backBtn.setStyle(
+                "-fx-background-color: #d3d3d3;" +
+                        "-fx-text-fill: #2c3e50;" +
+                        "-fx-font-size: 16px;" +
+                        "-fx-font-weight: bold;" +
+                        "-fx-cursor: hand;"
+        );        backBtn.setOnAction(e -> root.setCenter(createMainContent(teacher, root)));
+
+        Label title = new Label("Analytics: " + course.getCourseCode());
+        title.setFont(Font.font("Segoe UI", FontWeight.LIGHT, 28));
+        title.setTextFill(Color.web("#2c3e50"));
+
+        header.getChildren().addAll(backBtn, title);
+
+        // Fetch Data from DAO
+        TeacherDAO dao = new TeacherDAO();
+        int[] stats = dao.getGradeDistribution(course.getCourseId());
+
+        // Check if class is empty
+        int totalStudents = stats[0] + stats[1] + stats[2] + stats[3] + stats[4];
+        if (totalStudents == 0) {
+            content.getChildren().addAll(header, new Label("No graded students yet."));
+            return content;
+        }
+
+        // Create Pie Chart Data
+        javafx.scene.chart.PieChart.Data d1 = new javafx.scene.chart.PieChart.Data("A (90-100)", stats[0]);
+        javafx.scene.chart.PieChart.Data d2 = new javafx.scene.chart.PieChart.Data("B (80-89)", stats[1]);
+        javafx.scene.chart.PieChart.Data d3 = new javafx.scene.chart.PieChart.Data("C (70-79)", stats[2]);
+        javafx.scene.chart.PieChart.Data d4 = new javafx.scene.chart.PieChart.Data("D (60-69)", stats[3]);
+        javafx.scene.chart.PieChart.Data d5 = new javafx.scene.chart.PieChart.Data("F (<60)", stats[4]);
+
+        javafx.scene.chart.PieChart chart = new javafx.scene.chart.PieChart();
+        chart.getData().addAll(d1, d2, d3, d4, d5);
+        chart.setTitle("Grade Distribution");
+        chart.setLegendSide(javafx.geometry.Side.RIGHT);
+
+        // Summary Text
+        Label summary = new Label("Total Graded Students: " + totalStudents);
+        summary.setFont(Font.font("Segoe UI", FontWeight.BOLD, 14));
+
+        content.getChildren().addAll(header, chart, summary);
         return content;
     }
 

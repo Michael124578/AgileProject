@@ -1,10 +1,7 @@
 package UI;
 
 import DAO.AdminDAO;
-import Model.Admin;
-import Model.Course;
-import Model.Hall;
-import Model.Teacher;
+import Model.*;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -70,8 +67,8 @@ public class AdminDashboard {
         ImageView profilePic = new ImageView();
         profilePic.setFitWidth(80); profilePic.setFitHeight(80);
         try {
-            if (admin.getFullName() != null && !admin.getFullName().isEmpty())
-                profilePic.setImage(new Image("file:///" + admin.getFullName().replace("\\", "/")));
+            if (admin.getProfilePicPath() != null && !admin.getProfilePicPath().isEmpty())
+                profilePic.setImage(new Image("file:///" + admin.getProfilePicPath().replace("\\", "/")));
             else
                 profilePic.setImage(new Image(getClass().getResourceAsStream("/images/student_placeholder.png")));
         } catch (Exception e) {
@@ -81,7 +78,7 @@ public class AdminDashboard {
         profilePic.setClip(clip);
 
         // --- Name ---
-        String displayName = (admin.getPassword() != null && !admin.getPassword().isEmpty()) ? admin.getPassword() : admin.getUsername();
+        String displayName = (admin.getFullName() != null && !admin.getFullName().isEmpty()) ? admin.getFullName() : admin.getUsername();
         Label nameLabel = new Label(displayName);
         nameLabel.setTextFill(Color.WHITE);
         nameLabel.setFont(Font.font("Segoe UI", FontWeight.BOLD, 16));
@@ -92,6 +89,7 @@ public class AdminDashboard {
         Button hallBtn = createNavButton("Manage Halls", false); // NEW BUTTON
         Button courseBtn = createNavButton("Manage Courses", false);
         Button assignBtn = createNavButton("Assign Teachers", false);
+        Button issueBtn = createNavButton("Reported Issues", false); // NEW BUTTON
         Button profileBtn = createNavButton("My Profile", false);
         Button logoutBtn = createNavButton("Logout", false);
 
@@ -120,6 +118,10 @@ public class AdminDashboard {
             root.setCenter(createProfileView(admin, root));
             setActive(profileBtn, teachBtn, hallBtn, courseBtn, assignBtn, logoutBtn);
         });
+        issueBtn.setOnAction(e -> {
+            root.setCenter(createIssuesView(root));
+            setActive(issueBtn, teachBtn, hallBtn, courseBtn, assignBtn, profileBtn, logoutBtn);
+        });
 
         logoutBtn.setOnAction(e -> {
             Stage current = (Stage) logoutBtn.getScene().getWindow();
@@ -127,7 +129,7 @@ public class AdminDashboard {
             try { new LoginScreen().show(new Stage()); } catch (Exception ex) {}
         });
 
-        navMenu.getChildren().addAll(teachBtn, hallBtn, courseBtn, assignBtn, profileBtn, logoutBtn);
+        navMenu.getChildren().addAll(teachBtn, hallBtn, courseBtn, issueBtn, assignBtn, profileBtn, logoutBtn);
         sidebar.getChildren().addAll(profilePic, nameLabel, new Region(), navMenu);
         return sidebar;
     }
@@ -474,8 +476,8 @@ public class AdminDashboard {
 
         // Load Image
         try {
-            if (admin.getFullName() != null && !admin.getFullName().isEmpty())
-                currentPic.setImage(new Image("file:///" + admin.getFullName().replace("\\", "/")));
+            if (admin.getProfilePicPath() != null && !admin.getProfilePicPath().isEmpty())
+                currentPic.setImage(new Image("file:///" + admin.getProfilePicPath().replace("\\", "/")));
             else
                 currentPic.setImage(new Image(getClass().getResourceAsStream("/images/student_placeholder.png")));
         } catch (Exception e) {
@@ -503,12 +505,12 @@ public class AdminDashboard {
         userField.setMaxWidth(400);
 
         Label lblF = new Label("Full Name:");
-        TextField nameField = new TextField(admin.getPassword() != null ? admin.getPassword() : "");
+        TextField nameField = new TextField(admin.getFullName() != null ? admin.getFullName() : "");
         nameField.setMaxWidth(400);
 
         Label lblP = new Label("Password:");
         PasswordField passField = new PasswordField();
-        passField.setText(admin.getProfilePicPath());
+        passField.setText(admin.getPassword());
         passField.setMaxWidth(400);
 
         Button saveBtn = new Button("Save Changes");
@@ -583,5 +585,101 @@ public class AdminDashboard {
         try { InputStream is = getClass().getResourceAsStream(path); if(is!=null) iv.setImage(new Image(is)); } catch(Exception e){}
         iv.setFitWidth(w); iv.setFitHeight(h);
         return iv;
+    }
+
+    // =========================================
+    // VIEW F: Manage Issues (NEW)
+    // =========================================
+    private VBox createIssuesView(BorderPane root) {
+        VBox content = new VBox(15);
+        content.setPadding(new Insets(20));
+
+        Label title = new Label("Reported Room Issues");
+        title.setFont(Font.font("Segoe UI", FontWeight.BOLD, 24));
+
+        // Table
+        TableView<HallIssue> table = new TableView<>();
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+
+        TableColumn<HallIssue, String> hallCol = new TableColumn<>("Hall");
+        hallCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("hallName"));
+
+        TableColumn<HallIssue, String> descCol = new TableColumn<>("Issue Description");
+        descCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("issueDescription"));
+
+        TableColumn<HallIssue, String> reporterCol = new TableColumn<>("Reporter");
+        reporterCol.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(
+                cell.getValue().getReporterType() + " (ID: " + cell.getValue().getReporterId() + ")"
+        ));
+
+        TableColumn<HallIssue, String> dateCol = new TableColumn<>("Date");
+        dateCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("formattedDate"));
+
+        TableColumn<HallIssue, String> statusCol = new TableColumn<>("Status");
+        statusCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("status"));
+        // Color the status text
+        statusCol.setCellFactory(column -> new TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setStyle("");
+                } else {
+                    setText(item);
+                    if (item.equals("Open")) {
+                        setTextFill(Color.RED);
+                        setStyle("-fx-font-weight: bold;");
+                    } else {
+                        setTextFill(Color.GREEN);
+                        setStyle("-fx-font-weight: normal;");
+                    }
+                }
+            }
+        });
+
+        // Action Column (Resolve Button)
+        TableColumn<HallIssue, Void> actionCol = new TableColumn<>("Action");
+        actionCol.setCellFactory(param -> new TableCell<>() {
+            private final Button btn = new Button("Resolve");
+            {
+                btn.setStyle("-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-size: 11px;");
+                btn.setOnAction(e -> {
+                    HallIssue issue = getTableView().getItems().get(getIndex());
+                    AdminDAO dao = new AdminDAO();
+                    if (dao.resolveIssue(issue.getIssueId())) {
+                        new Alert(Alert.AlertType.INFORMATION, "Issue marked as Resolved.").show();
+                        root.setCenter(createIssuesView(root)); // Refresh
+                    } else {
+                        new Alert(Alert.AlertType.ERROR, "Failed to update status.").show();
+                    }
+                });
+            }
+
+            @Override
+            protected void updateItem(Void item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty) {
+                    setGraphic(null);
+                } else {
+                    HallIssue currentIssue = getTableView().getItems().get(getIndex());
+                    // Only show button if status is 'Open'
+                    if ("Open".equals(currentIssue.getStatus())) {
+                        setGraphic(btn);
+                    } else {
+                        setGraphic(null);
+                    }
+                }
+            }
+        });
+
+        table.getColumns().addAll(hallCol, descCol, reporterCol, dateCol, statusCol, actionCol);
+
+        // Load Data
+        AdminDAO dao = new AdminDAO();
+        table.getItems().addAll(dao.getAllIssues());
+
+        content.getChildren().addAll(title, table);
+        return content;
     }
 }

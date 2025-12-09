@@ -3,6 +3,7 @@ package UI;
 import DAO.StudentDAO;
 import Model.Course;
 import Model.EnrolledCourse;
+import Model.Hall;
 import Model.Student;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -132,6 +133,7 @@ public class StudentDashboard {
 
         // 1. Create Buttons
         Button dashBtn = createNavButton("Dashboard", true); // Initially Active
+        Button bookBtn = createNavButton("Book Hall", false); // NEW
         Button profileBtn = createNavButton("Profile", false);
         Button logoutBtn = createNavButton("Logout", false);
 
@@ -159,8 +161,12 @@ public class StudentDashboard {
                 ex.printStackTrace();
             }
         });
+        bookBtn.setOnAction(e -> {
+            root.setCenter(createBookingView(student, root));
+            setActive(bookBtn, dashBtn, profileBtn, logoutBtn);
+        });
 
-        navMenu.getChildren().addAll(dashBtn, profileBtn, logoutBtn);
+        navMenu.getChildren().addAll(dashBtn, profileBtn,bookBtn, logoutBtn );
 
         // Add everything to Sidebar
         sidebar.getChildren().addAll(profilePic, nameLabel, new Region(), navMenu);
@@ -744,7 +750,7 @@ public class StudentDashboard {
             if (c.getDay() == null || c.getDay().isEmpty()) continue;
             if (c.getGrade() > 0) continue;
 
-            Pane card = createClassCard(c);
+            Pane card = createClassCard(c,student);
 
             // Sort into correct column
             switch (c.getDay()) {
@@ -786,10 +792,9 @@ public class StudentDashboard {
     }
 
     // Helper: Create a specific Card for a Class
-    private Pane createClassCard(EnrolledCourse c) {
-        VBox card = new VBox(5);
+    private Pane createClassCard(EnrolledCourse c, Student student) {
+        VBox card = new VBox(8); // Increased spacing slightly
         card.setPadding(new Insets(15));
-        // Different color border based on logic, or just standard blue
         card.setStyle("-fx-background-color: white; -fx-background-radius: 5; -fx-border-color: #3498db; -fx-border-width: 0 0 0 5; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 5, 0, 0, 2);");
 
         Label code = new Label(c.getCourseCode());
@@ -808,7 +813,37 @@ public class StudentDashboard {
         room.setFont(Font.font("Segoe UI", 11));
         room.setTextFill(Color.web("#7f8c8d"));
 
-        card.getChildren().addAll(code, name, new Separator(), time, room);
+        // --- NEW: Report Issue Button ---
+        Button reportBtn = new Button("⚠ Report Issue");
+        reportBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #e74c3c; -fx-font-size: 11px; -fx-cursor: hand; -fx-padding: 0;");
+
+        reportBtn.setOnAction(e -> {
+            // check if hall exists
+            if (c.getHallId() == 0) {
+                new Alert(Alert.AlertType.ERROR, "Cannot report issue: No valid hall assigned.").show();
+                return;
+            }
+
+            TextInputDialog dialog = new TextInputDialog();
+            dialog.setTitle("Report Room Issue");
+            dialog.setHeaderText("Report an issue with " + c.getRoom());
+            dialog.setContentText("Describe the problem:");
+
+            dialog.showAndWait().ifPresent(description -> {
+                if (description.trim().isEmpty()) return;
+
+                StudentDAO dao = new StudentDAO();
+                boolean success = dao.reportIssue(student.getStudentId(), c.getHallId(), description);
+
+                if (success) {
+                    new Alert(Alert.AlertType.INFORMATION, "Issue reported successfully to Admin.").show();
+                } else {
+                    new Alert(Alert.AlertType.ERROR, "Failed to report issue.").show();
+                }
+            });
+        });
+
+        card.getChildren().addAll(code, name, new Separator(), time, room, reportBtn);
         return card;
     }
 
@@ -912,6 +947,83 @@ public class StudentDashboard {
         paySection.getChildren().addAll(payTitle, amountField, payBtn, statusLabel);
 
         content.getChildren().addAll(backBtn, title, financeRow, paySection);
+        return content;
+    }
+
+    private VBox createBookingView(Student student, BorderPane root) {
+        VBox content = new VBox(20);
+        content.setPadding(new Insets(30));
+        content.setAlignment(Pos.TOP_LEFT);
+
+        Label title = new Label("Book a Hall");
+        title.setFont(Font.font("Segoe UI", FontWeight.LIGHT, 28));
+        title.setTextFill(Color.web("#2c3e50"));
+
+        // Form
+        GridPane grid = new GridPane();
+        grid.setHgap(15); grid.setVgap(15);
+
+        // 1. Select Hall
+        StudentDAO dao = new StudentDAO();
+        ComboBox<Hall> hallBox = new ComboBox<>();
+        hallBox.getItems().addAll(dao.getAllHalls());
+        hallBox.setPromptText("Select a Hall");
+        hallBox.setPrefWidth(250);
+        // Display Hall Name
+        hallBox.setConverter(new javafx.util.StringConverter<>() {
+            public String toString(Hall h) { return h == null ? "" : h.getHallName() + " (" + h.getHallType() + ")"; }
+            public Hall fromString(String s) { return null; }
+        });
+
+        // 2. Select Date
+        DatePicker datePicker = new DatePicker();
+        datePicker.setPromptText("Select Date");
+
+        // 3. Time Inputs
+        TextField startField = new TextField(); startField.setPromptText("09:00 AM");
+        TextField endField = new TextField(); endField.setPromptText("10:30 AM");
+
+        // 4. Purpose
+        TextField purposeField = new TextField(); purposeField.setPromptText("Reason (e.g. Study Group)");
+        purposeField.setPrefWidth(250);
+
+        Button bookBtn = new Button("Confirm Booking");
+        bookBtn.setStyle("-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
+
+        // Add to Grid
+        grid.add(new Label("Hall:"), 0, 0); grid.add(hallBox, 1, 0);
+        grid.add(new Label("Date:"), 0, 1); grid.add(datePicker, 1, 1);
+        grid.add(new Label("Start Time:"), 0, 2); grid.add(startField, 1, 2);
+        grid.add(new Label("End Time:"), 0, 3); grid.add(endField, 1, 3);
+        grid.add(new Label("Purpose:"), 0, 4); grid.add(purposeField, 1, 4);
+        grid.add(bookBtn, 1, 5);
+
+        // Logic
+        bookBtn.setOnAction(e -> {
+            Hall hall = hallBox.getValue();
+            java.time.LocalDate date = datePicker.getValue();
+            String start = startField.getText().trim();
+            String end = endField.getText().trim();
+            String purpose = purposeField.getText().trim();
+
+            if (hall == null || date == null || start.isEmpty() || end.isEmpty()) {
+                new Alert(Alert.AlertType.ERROR, "Please fill all fields.").show();
+                return;
+            }
+
+            // Call DAO
+            boolean success = dao.bookHall(student.getStudentId(), hall.getHallId(), date, start, end, purpose);
+
+            if (success) {
+                new Alert(Alert.AlertType.INFORMATION, "Hall booked successfully!").showAndWait();
+                // Clear fields
+                startField.clear(); endField.clear(); purposeField.clear();
+            } else {
+                new Alert(Alert.AlertType.ERROR, "Booking Failed. Hall might be occupied or time format invalid (Use HH:mm AM).").show();
+            }
+        });
+
+        content.getChildren().addAll(title, new Label("Reserve a hall during free time slots."), grid);
         return content;
     }
 

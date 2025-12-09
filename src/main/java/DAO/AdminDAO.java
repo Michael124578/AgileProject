@@ -4,6 +4,7 @@ import Model.Admin;
 import Model.Course;
 import Model.Hall;
 import Model.Teacher;
+import Model.HallIssue;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -15,7 +16,7 @@ public class AdminDAO {
 
     // 1. LOGIN
     public Admin login(String username, String password) {
-        String sql = "SELECT AdminID, Username,FullName, PasswordHash, ProfilePicPath FROM Admins WHERE Username = ? AND Password = ?";
+        String sql = "SELECT AdminID, Username,FullName, PasswordHash, ProfilePicPath FROM Admins WHERE Username = ? AND PasswordHash = ?";
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, username);
@@ -130,6 +131,55 @@ public class AdminDAO {
             pstmt.setInt(1, hallId);
             return pstmt.executeUpdate() > 0;
         } catch (SQLException e) { e.printStackTrace(); return false; }
+    }
+
+    // =========================
+    // ISSUE MANAGEMENT
+    // =========================
+
+    // 1. Get All Reported Issues
+    public List<HallIssue> getAllIssues() {
+        List<HallIssue> list = new ArrayList<>();
+        // Join with Halls to get the Hall Name for display
+        String sql = "SELECT I.IssueID, I.HallID, H.HallName, I.ReporterID, I.ReporterType, " +
+                "I.IssueDescription, I.Status, I.ReportedDate " +
+                "FROM HallIssues I " +
+                "JOIN Halls H ON I.HallID = H.HallID " +
+                "ORDER BY I.ReportedDate DESC";
+
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql);
+             ResultSet rs = pstmt.executeQuery()) {
+
+            while (rs.next()) {
+                list.add(new HallIssue(
+                        rs.getInt("IssueID"),
+                        rs.getInt("HallID"),
+                        rs.getString("HallName"),
+                        rs.getInt("ReporterID"),
+                        rs.getString("ReporterType"),
+                        rs.getString("IssueDescription"),
+                        rs.getString("Status"),
+                        rs.getTimestamp("ReportedDate")
+                ));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    // 2. Mark Issue as Resolved
+    public boolean resolveIssue(int issueId) {
+        String sql = "UPDATE HallIssues SET Status = 'Resolved' WHERE IssueID = ?";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, issueId);
+            return pstmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
     }
 
     // =========================

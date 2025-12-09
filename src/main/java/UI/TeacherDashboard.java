@@ -148,7 +148,7 @@ public class TeacherDashboard {
         for (Course c : courses) {
             if (c.getDayOfWeek() == null || c.getDayOfWeek().isEmpty()) continue;
 
-            Pane card = createClassCard(c);
+            Pane card = createClassCard(c,teacher);
 
             // Sort into correct column
             switch (c.getDayOfWeek()) {
@@ -189,10 +189,11 @@ public class TeacherDashboard {
     }
 
     // Helper: Create Card
-    private Pane createClassCard(Course c) {
-        VBox card = new VBox(5);
+    // Helper: Create Card (UPDATED)
+    private Pane createClassCard(Course c, Teacher teacher) {
+        VBox card = new VBox(8);
         card.setPadding(new Insets(15));
-        // Green border for teachers to distinguish from student view
+        // Green border for teachers
         card.setStyle("-fx-background-color: white; -fx-background-radius: 5; -fx-border-color: #27ae60; -fx-border-width: 0 0 0 5; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 5, 0, 0, 2);");
 
         Label code = new Label(c.getCourseCode());
@@ -211,7 +212,37 @@ public class TeacherDashboard {
         room.setFont(Font.font("Segoe UI", 11));
         room.setTextFill(Color.web("#7f8c8d"));
 
-        card.getChildren().addAll(code, name, new Separator(), time, room);
+        // --- NEW: Report Issue Button ---
+        Button reportBtn = new Button("⚠ Report Issue");
+        reportBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #e74c3c; -fx-font-size: 11px; -fx-cursor: hand; -fx-padding: 0;");
+
+        reportBtn.setOnAction(e -> {
+            if (c.getHallId() == 0) {
+                new Alert(Alert.AlertType.ERROR, "Cannot report issue: No valid hall assigned.").show();
+                return;
+            }
+
+            TextInputDialog dialog = new TextInputDialog();
+            dialog.setTitle("Report Room Issue");
+            dialog.setHeaderText("Report an issue with " + c.getRoomNumber());
+            dialog.setContentText("Describe the problem:");
+
+            dialog.showAndWait().ifPresent(description -> {
+                if (description.trim().isEmpty()) return;
+
+                TeacherDAO dao = new TeacherDAO();
+                // Pass teacher ID and Hall ID
+                boolean success = dao.reportIssue(teacher.getTeacherId(), c.getHallId(), description);
+
+                if (success) {
+                    new Alert(Alert.AlertType.INFORMATION, "Issue reported successfully.").show();
+                } else {
+                    new Alert(Alert.AlertType.ERROR, "Failed to report issue.").show();
+                }
+            });
+        });
+
+        card.getChildren().addAll(code, name, new Separator(), time, room, reportBtn);
         return card;
     }
 

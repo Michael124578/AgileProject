@@ -2,7 +2,11 @@ package DAO;
 
 
 import Model.*;
-
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.util.Locale;
 import java.util.ArrayList;
 import java.util.List;
 import java.sql.Connection;
@@ -405,6 +409,119 @@ public class StudentDAO {
             e.printStackTrace();
             return false;
         }
+    }
+
+    // 1. Get All Halls (For the dropdown)
+    public List<Hall> getAllHalls() {
+        List<Hall> list = new ArrayList<>();
+        String sql = "SELECT * FROM Halls WHERE IsActive = 1";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql);
+             ResultSet rs = pstmt.executeQuery()) {
+            while (rs.next()) {
+                list.add(new Hall(
+                        rs.getInt("HallID"),
+                        rs.getString("HallName"),
+                        rs.getInt("Capacity"),
+                        rs.getBoolean("IsActive"),
+                        rs.getString("HallType")
+                ));
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return list;
+    }
+
+    // 2. Book a Hall (Includes Conflict Check)
+    public boolean bookHall(int studentId, int hallId, LocalDate date, String start, String end, String purpose) {
+        // A. Validate Time Format
+        if (!isValidTime(start) || !isValidTime(end)) {
+            System.out.println("Invalid time format. Use HH:mm AM/PM (e.g., 09:30 AM)");
+            return false;
+        }
+
+        // B. Check Availability
+        if (!isHallFree(hallId, date, start, end)) {
+            System.out.println("Hall is occupied at this time.");
+            return false;
+        }
+
+        // C. Insert Booking
+        String sql = "INSERT INTO HallBookings (HallID, StudentID, BookingDate, StartTime, EndTime, Purpose) VALUES (?, ?, ?, ?, ?, ?)";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, hallId);
+            pstmt.setInt(2, studentId);
+            pstmt.setDate(3, java.sql.Date.valueOf(date));
+            pstmt.setString(4, start);
+            pstmt.setString(5, end);
+            pstmt.setString(6, purpose);
+            return pstmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    // Helper: Check if Hall is Free
+    private boolean isHallFree(int hallId, LocalDate date, String newStartStr, String newEndStr) {
+        LocalTime newStart = parseTime(newStartStr);
+        LocalTime newEnd = parseTime(newEndStr);
+        if(newStart == null || newEnd == null) return false;
+
+        // 1. Check against COURSES (Weekly Schedule)
+        // SQL Server's DATENAME returns 'Monday', 'Tuesday', etc.
+        String dayOfWeek = date.getDayOfWeek().name(); // Returns "MONDAY", need to fix case to match DB if needed
+        // Assuming DB stores "Monday", "Tuesday" (Title case)
+        dayOfWeek = dayOfWeek.charAt(0) + dayOfWeek.substring(1).toLowerCase();
+
+        String courseSql = "SELECT StartTime, EndTime FROM Courses WHERE HallID = ? AND DayOfWeek = ?";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(courseSql)) {
+            pstmt.setInt(1, hallId);
+            pstmt.setString(2, dayOfWeek);
+            ResultSet rs = pstmt.executeQuery();
+            while (rs.next()) {
+                if (isOverlapping(newStart, newEnd, rs.getString("StartTime"), rs.getString("EndTime"))) return false;
+            }
+        } catch (SQLException e) { e.printStackTrace(); return false; }
+
+        // 2. Check against OTHER BOOKINGS (Specific Date)
+        String bookingSql = "SELECT StartTime, EndTime FROM HallBookings WHERE HallID = ? AND BookingDate = ?";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(bookingSql)) {
+            pstmt.setInt(1, hallId);
+            pstmt.setDate(2, java.sql.Date.valueOf(date));
+            ResultSet rs = pstmt.executeQuery();
+            while (rs.next()) {
+                if (isOverlapping(newStart, newEnd, rs.getString("StartTime"), rs.getString("EndTime"))) return false;
+            }
+        } catch (SQLException e) { e.printStackTrace(); return false; }
+
+        return true;
+    }
+
+    // Helper: Time Overlap Logic
+    private boolean isOverlapping(LocalTime start1, LocalTime end1, String start2Str, String end2Str) {
+        LocalTime start2 = parseTime(start2Str);
+        LocalTime end2 = parseTime(end2Str);
+        if (start2 == null || end2 == null) return false; // Ignore bad data
+        // Overlap condition: (Start1 < End2) AND (Start2 < End1)
+        return start1.isBefore(end2) && start2.isBefore(end1);
+    }
+
+    // Helper: Parse Time String "09:00 AM" -> LocalTime
+    private LocalTime parseTime(String timeStr) {
+        try {
+            // Try standard formats. "hh:mm a" is for 09:00 AM
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("hh:mm a", Locale.ENGLISH);
+            return LocalTime.parse(timeStr.toUpperCase(), formatter); // Ensure AM/PM is upper
+        } catch (DateTimeParseException e) {
+            return null;
+        }
+    }
+
+    private boolean isValidTime(String timeStr) {
+        return parseTime(timeStr) != null;
     }
 
 }

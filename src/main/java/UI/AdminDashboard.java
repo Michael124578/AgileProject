@@ -29,7 +29,7 @@ public class AdminDashboard {
         root.setCenter(createTeachersView(root)); // Default View
 
         Scene scene = new Scene(root, 1200, 700);
-        stage.setTitle("Admin Dashboard - " + admin.getUsername());
+        stage.setTitle("Admin Dashboard - " + admin.getFullName());
         stage.setScene(scene);
         stage.show();
     }

@@ -524,4 +524,86 @@ public class StudentDAO {
         return parseTime(timeStr) != null;
     }
 
+    // ==========================================
+    // 6. HALL SCHEDULE & BOOKINGS
+    // ==========================================
+
+    // Get all bookings made by this specific student
+    public List<HallBooking> getStudentBookings(int studentId) {
+        List<HallBooking> list = new ArrayList<>();
+        String sql = "SELECT B.BookingID, B.HallID, H.HallName, B.BookingDate, B.StartTime, B.EndTime, B.Purpose, B.Status " +
+                "FROM HallBookings B " +
+                "JOIN Halls H ON B.HallID = H.HallID " +
+                "WHERE B.StudentID = ? " +
+                "ORDER BY B.BookingDate DESC";
+
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setInt(1, studentId);
+            ResultSet rs = pstmt.executeQuery();
+
+            while (rs.next()) {
+                list.add(new HallBooking(
+                        rs.getInt("BookingID"),
+                        rs.getInt("HallID"),
+                        rs.getString("HallName"),
+                        studentId,
+                        rs.getDate("BookingDate"),
+                        rs.getString("StartTime"),
+                        rs.getString("EndTime"),
+                        rs.getString("Purpose"),
+                        rs.getString("Status")
+                ));
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return list;
+    }
+
+    // Get the full schedule (Classes + Bookings) for a specific Hall on a specific Date
+    public List<HallBooking> getHallSchedule(int hallId, LocalDate date) {
+        List<HallBooking> list = new ArrayList<>();
+
+        // 1. Fetch Regular Bookings
+        String sqlBookings = "SELECT StartTime, EndTime, Status FROM HallBookings WHERE HallID = ? AND BookingDate = ?";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sqlBookings)) {
+            pstmt.setInt(1, hallId);
+            pstmt.setDate(2, java.sql.Date.valueOf(date));
+            ResultSet rs = pstmt.executeQuery();
+            while (rs.next()) {
+                list.add(new HallBooking(
+                        0, hallId, "Unknown", 0, java.sql.Date.valueOf(date),
+                        rs.getString("StartTime"),
+                        rs.getString("EndTime"),
+                        "Reserved Booking",
+                        "Occupied (" + rs.getString("Status") + ")"
+                ));
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+
+        // 2. Fetch Recurring Courses (e.g., if date is a Monday, get Monday classes)
+        String dayName = date.getDayOfWeek().name(); // "MONDAY"
+        dayName = dayName.charAt(0) + dayName.substring(1).toLowerCase(); // "Monday"
+
+        String sqlCourses = "SELECT CourseCode, StartTime, EndTime FROM Courses WHERE HallID = ? AND DayOfWeek = ?";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sqlCourses)) {
+            pstmt.setInt(1, hallId);
+            pstmt.setString(2, dayName);
+            ResultSet rs = pstmt.executeQuery();
+            while (rs.next()) {
+                list.add(new HallBooking(
+                        0, hallId, "Unknown", 0, java.sql.Date.valueOf(date),
+                        rs.getString("StartTime"),
+                        rs.getString("EndTime"),
+                        "University Class",
+                        "Class: " + rs.getString("CourseCode")
+                ));
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+
+        return list;
+    }
+
 }

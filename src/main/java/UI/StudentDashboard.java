@@ -1,10 +1,7 @@
 package UI;
 
 import DAO.StudentDAO;
-import Model.Course;
-import Model.EnrolledCourse;
-import Model.Hall;
-import Model.Student;
+import Model.*;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -134,6 +131,7 @@ public class StudentDashboard {
         // 1. Create Buttons
         Button dashBtn = createNavButton("Dashboard", true); // Initially Active
         Button bookBtn = createNavButton("Book Hall", false); // NEW
+        Button hallInfoBtn = createNavButton("Hall Info", false); // <--- NEW BUTTON
         Button profileBtn = createNavButton("Profile", false);
         Button logoutBtn = createNavButton("Logout", false);
 
@@ -165,8 +163,12 @@ public class StudentDashboard {
             root.setCenter(createBookingView(student, root));
             setActive(bookBtn, dashBtn, profileBtn, logoutBtn);
         });
+        hallInfoBtn.setOnAction(e -> {
+            root.setCenter(createHallInfoView(student)); // Call the new view method
+            setActive(hallInfoBtn, dashBtn, bookBtn, profileBtn, logoutBtn);
+        });
 
-        navMenu.getChildren().addAll(dashBtn, profileBtn,bookBtn, logoutBtn );
+        navMenu.getChildren().addAll(dashBtn, profileBtn,bookBtn,hallInfoBtn, logoutBtn );
 
         // Add everything to Sidebar
         sidebar.getChildren().addAll(profilePic, nameLabel, new Region(), navMenu);
@@ -1024,6 +1026,110 @@ public class StudentDashboard {
         });
 
         content.getChildren().addAll(title, new Label("Reserve a hall during free time slots."), grid);
+        return content;
+    }
+
+    private VBox createHallInfoView(Student student) {
+        VBox content = new VBox(20);
+        content.setPadding(new Insets(30));
+        content.setAlignment(Pos.TOP_LEFT);
+
+        Label title = new Label("Halls & Schedules");
+        title.setFont(Font.font("Segoe UI", FontWeight.LIGHT, 28));
+        title.setTextFill(Color.web("#2c3e50"));
+
+        TabPane tabs = new TabPane();
+        tabs.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
+
+        // --- TAB 1: My Bookings ---
+        Tab myBookingsTab = new Tab("My Bookings");
+        VBox myBookingsBox = new VBox(15);
+        myBookingsBox.setPadding(new Insets(20));
+
+        TableView<HallBooking> myTable = new TableView<>();
+        myTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+
+        TableColumn<HallBooking, String> hCol = new TableColumn<>("Hall");
+        hCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("hallName"));
+
+        TableColumn<HallBooking, String> dCol = new TableColumn<>("Date");
+        dCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("bookingDate"));
+
+        TableColumn<HallBooking, String> tCol = new TableColumn<>("Time");
+        tCol.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(
+                cell.getValue().getStartTime() + " - " + cell.getValue().getEndTime()
+        ));
+
+        TableColumn<HallBooking, String> sCol = new TableColumn<>("Status");
+        sCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("status"));
+
+        myTable.getColumns().addAll(hCol, dCol, tCol, sCol);
+
+        // Load Data
+        StudentDAO dao = new StudentDAO();
+        myTable.getItems().addAll(dao.getStudentBookings(student.getStudentId()));
+
+        myBookingsBox.getChildren().addAll(new Label("History of your requests:"), myTable);
+        myBookingsTab.setContent(myBookingsBox);
+
+
+        // --- TAB 2: Check Schedule ---
+        Tab scheduleTab = new Tab("Check Hall Availability");
+        VBox scheduleBox = new VBox(15);
+        scheduleBox.setPadding(new Insets(20));
+
+        // Filters
+        HBox filters = new HBox(15);
+        filters.setAlignment(Pos.CENTER_LEFT);
+
+        ComboBox<Hall> hallPicker = new ComboBox<>();
+        hallPicker.getItems().addAll(dao.getAllHalls());
+        hallPicker.setPromptText("Select Hall");
+        hallPicker.setConverter(new javafx.util.StringConverter<>() {
+            public String toString(Hall h) { return h == null ? "" : h.getHallName(); }
+            public Hall fromString(String s) { return null; }
+        });
+
+        DatePicker datePicker = new DatePicker(java.time.LocalDate.now());
+        Button searchBtn = new Button("Show Schedule");
+        searchBtn.setStyle("-fx-background-color: #3498db; -fx-text-fill: white; -fx-cursor: hand;");
+
+        filters.getChildren().addAll(new Label("Hall:"), hallPicker, new Label("Date:"), datePicker, searchBtn);
+
+        // Schedule Table
+        TableView<HallBooking> schedTable = new TableView<>();
+        schedTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        schedTable.setPlaceholder(new Label("Select a Hall and Date to see busy slots"));
+
+        TableColumn<HallBooking, String> timeCol = new TableColumn<>("Time Slot");
+        timeCol.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(
+                cell.getValue().getStartTime() + " - " + cell.getValue().getEndTime()
+        ));
+
+        TableColumn<HallBooking, String> infoCol = new TableColumn<>("Status / Class");
+        infoCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("status"));
+
+        schedTable.getColumns().addAll(timeCol, infoCol);
+
+        // Search Logic
+        searchBtn.setOnAction(e -> {
+            schedTable.getItems().clear();
+            if (hallPicker.getValue() != null && datePicker.getValue() != null) {
+                List<HallBooking> schedule = dao.getHallSchedule(hallPicker.getValue().getHallId(), datePicker.getValue());
+                if (schedule.isEmpty()) {
+                    schedTable.setPlaceholder(new Label("Hall is completely free on this day!"));
+                } else {
+                    schedTable.getItems().addAll(schedule);
+                }
+            }
+        });
+
+        scheduleBox.getChildren().addAll(filters, schedTable);
+        scheduleTab.setContent(scheduleBox);
+
+        // Add Tabs
+        tabs.getTabs().addAll(scheduleTab, myBookingsTab); // Schedule first as requested
+        content.getChildren().addAll(title, tabs);
         return content;
     }
 

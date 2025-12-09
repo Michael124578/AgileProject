@@ -112,12 +112,13 @@ public class TeacherDAO {
     public List<Course> getTeacherCourses(int teacherId) {
         List<Course> list = new ArrayList<>();
 
-        // Fetch Schedule Columns as well
-        String sql = "SELECT c.CourseID, c.CourseCode, c.CourseName, c.Credits, " +
-                "c.DayOfWeek, c.StartTime, c.EndTime, c.RoomNumber " +
-                "FROM Courses c " +
-                "JOIN TeacherAssignments ta ON c.CourseID = ta.CourseID " +
-                "WHERE ta.TeacherID = ?";
+        // UPDATED SQL: Joins Halls table
+        String sql = "SELECT C.CourseID, C.CourseCode, C.CourseName, C.Credits, " +
+                "C.DayOfWeek, C.StartTime, C.EndTime, H.HallName, H.HallID " +
+                "FROM Courses C " +
+                "JOIN TeacherAssignments TA ON C.CourseID = TA.CourseID " +
+                "LEFT JOIN Halls H ON C.HallID = H.HallID " +
+                "WHERE TA.TeacherID = ?";
 
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -126,20 +127,44 @@ public class TeacherDAO {
             ResultSet rs = pstmt.executeQuery();
 
             while (rs.next()) {
+                String roomName = rs.getString("HallName");
+                if (roomName == null) roomName = "TBA";
+
                 list.add(new Course(
                         rs.getInt("CourseID"),
                         rs.getString("CourseCode"),
                         rs.getString("CourseName"),
                         rs.getInt("Credits"),
-                        // Map the new Schedule fields
                         rs.getString("DayOfWeek"),
                         rs.getString("StartTime"),
                         rs.getString("EndTime"),
-                        rs.getString("RoomNumber")
+                        roomName,           // Pass HallName
+                        rs.getInt("HallID") // Pass HallID
                 ));
             }
         } catch (SQLException e) { e.printStackTrace(); }
         return list;
+    }
+
+    // ==========================================
+    // NEW: Report Hall Issue
+    // ==========================================
+    public boolean reportIssue(int teacherId, int hallId, String description) {
+        String sql = "INSERT INTO HallIssues (HallID, ReporterID, ReporterType, IssueDescription, Status, ReportedDate) " +
+                "VALUES (?, ?, 'Teacher', ?, 'Open', GETDATE())";
+
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setInt(1, hallId);
+            pstmt.setInt(2, teacherId);
+            pstmt.setString(3, description);
+
+            return pstmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
     }
 
     // 3. Get Students Enrolled in a specific Course

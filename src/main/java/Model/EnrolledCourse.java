@@ -5,13 +5,14 @@ public class EnrolledCourse {
     private String courseName;
     private int credits;
     private String semester;
-    private double grade; // 0.0 if not graded yet
+    private double grade;
     private String day;
     private String startTime;
     private String endTime;
     private String room;
+    private int hallId; // NEW FIELD
 
-    public EnrolledCourse(String code, String name, int cred, String sem, double gr, String day, String start, String end, String room) {
+    public EnrolledCourse(String code, String name, int cred, String sem, double gr, String day, String start, String end, String room, int hallId) {
         this.courseCode = code;
         this.courseName = name;
         this.credits = cred;
@@ -21,9 +22,10 @@ public class EnrolledCourse {
         this.startTime = start;
         this.endTime = end;
         this.room = room;
+        this.hallId = hallId;
     }
 
-    // Getters are REQUIRED for TableView to work
+    // Existing Getters
     public String getCourseCode() { return courseCode; }
     public String getCourseName() { return courseName; }
     public int getCredits() { return credits; }
@@ -34,7 +36,9 @@ public class EnrolledCourse {
     public String getEndTime() { return endTime; }
     public String getRoom() { return room; }
 
-    // Helper to display "N/A" if grade is 0
+    // NEW Getter
+    public int getHallId() { return hallId; }
+
     public String getGradeString() {
         return grade == 0.0 ? "In Progress" : String.valueOf(grade);
     }

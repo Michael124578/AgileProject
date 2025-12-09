@@ -231,12 +231,13 @@ public class StudentDAO {
     public List<EnrolledCourse> getEnrolledCourses(int studentId) {
         List<EnrolledCourse> list = new ArrayList<>();
 
-        // Updated Query to include Schedule columns
-        String sql = "SELECT c.CourseCode, c.CourseName, c.Credits, e.Semester, e.Grade, " +
-                "c.DayOfWeek, c.StartTime, c.EndTime, c.RoomNumber " +
-                "FROM Enrollments e " +
-                "JOIN Courses c ON e.CourseID = c.CourseID " +
-                "WHERE e.StudentID = ?";
+        // UPDATED SQL: Joins Halls table to get HallName and HallID
+        String sql = "SELECT C.CourseCode, C.CourseName, C.Credits, E.Semester, E.Grade, " +
+                "C.DayOfWeek, C.StartTime, C.EndTime, H.HallName, H.HallID " +
+                "FROM Enrollments E " +
+                "JOIN Courses C ON E.CourseID = C.CourseID " +
+                "LEFT JOIN Halls H ON C.HallID = H.HallID " +
+                "WHERE E.StudentID = ?";
 
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -245,6 +246,9 @@ public class StudentDAO {
 
             try (ResultSet rs = pstmt.executeQuery()) {
                 while (rs.next()) {
+                    String roomName = rs.getString("HallName");
+                    if (roomName == null) roomName = "TBA";
+
                     list.add(new EnrolledCourse(
                             rs.getString("CourseCode"),
                             rs.getString("CourseName"),
@@ -254,7 +258,8 @@ public class StudentDAO {
                             rs.getString("DayOfWeek"),
                             rs.getString("StartTime"),
                             rs.getString("EndTime"),
-                            rs.getString("RoomNumber")
+                            roomName,           // Pass HallName
+                            rs.getInt("HallID") // Pass HallID
                     ));
                 }
             }
@@ -381,6 +386,25 @@ public class StudentDAO {
         }
     }
 
+    // ==========================================
+    // NEW: Report Hall Issue
+    // ==========================================
+    public boolean reportIssue(int studentId, int hallId, String description) {
+        String sql = "INSERT INTO HallIssues (HallID, ReporterID, ReporterType, IssueDescription, Status, ReportedDate) " +
+                "VALUES (?, ?, 'Student', ?, 'Open', GETDATE())";
 
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setInt(1, hallId);
+            pstmt.setInt(2, studentId);
+            pstmt.setString(3, description);
+
+            return pstmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
 
 }

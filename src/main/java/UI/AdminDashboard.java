@@ -3,6 +3,7 @@ package UI;
 import DAO.AdminDAO;
 import Model.Admin;
 import Model.Course;
+import Model.Hall;
 import Model.Teacher;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -88,30 +89,36 @@ public class AdminDashboard {
         // --- Menu Buttons ---
         VBox navMenu = new VBox(5);
         Button teachBtn = createNavButton("Manage Teachers", true);
+        Button hallBtn = createNavButton("Manage Halls", false); // NEW BUTTON
         Button courseBtn = createNavButton("Manage Courses", false);
         Button assignBtn = createNavButton("Assign Teachers", false);
-        Button profileBtn = createNavButton("My Profile", false); // NEW
+        Button profileBtn = createNavButton("My Profile", false);
         Button logoutBtn = createNavButton("Logout", false);
 
         // Actions
         teachBtn.setOnAction(e -> {
             root.setCenter(createTeachersView(root));
-            setActive(teachBtn, courseBtn, assignBtn, profileBtn, logoutBtn);
+            setActive(teachBtn, hallBtn, courseBtn, assignBtn, profileBtn, logoutBtn);
+        });
+
+        hallBtn.setOnAction(e -> {
+            root.setCenter(createHallsView(root)); // NEW ACTION
+            setActive(hallBtn, teachBtn, courseBtn, assignBtn, profileBtn, logoutBtn);
         });
 
         courseBtn.setOnAction(e -> {
             root.setCenter(createCoursesView(root));
-            setActive(courseBtn, teachBtn, assignBtn, profileBtn, logoutBtn);
+            setActive(courseBtn, teachBtn, hallBtn, assignBtn, profileBtn, logoutBtn);
         });
 
         assignBtn.setOnAction(e -> {
             root.setCenter(createAssignmentView(root));
-            setActive(assignBtn, teachBtn, courseBtn, profileBtn, logoutBtn);
+            setActive(assignBtn, teachBtn, hallBtn, courseBtn, profileBtn, logoutBtn);
         });
 
         profileBtn.setOnAction(e -> {
-            root.setCenter(createProfileView(admin, root)); // NEW
-            setActive(profileBtn, teachBtn, courseBtn, assignBtn, logoutBtn);
+            root.setCenter(createProfileView(admin, root));
+            setActive(profileBtn, teachBtn, hallBtn, courseBtn, assignBtn, logoutBtn);
         });
 
         logoutBtn.setOnAction(e -> {
@@ -120,7 +127,7 @@ public class AdminDashboard {
             try { new LoginScreen().show(new Stage()); } catch (Exception ex) {}
         });
 
-        navMenu.getChildren().addAll(teachBtn, courseBtn, assignBtn, profileBtn, logoutBtn);
+        navMenu.getChildren().addAll(teachBtn, hallBtn, courseBtn, assignBtn, profileBtn, logoutBtn);
         sidebar.getChildren().addAll(profilePic, nameLabel, new Region(), navMenu);
         return sidebar;
     }
@@ -201,7 +208,88 @@ public class AdminDashboard {
     }
 
     // =========================================
-    // VIEW B: Manage Courses
+    // VIEW B: Manage Halls (NEW)
+    // =========================================
+    private VBox createHallsView(BorderPane root) {
+        VBox content = new VBox(15);
+        content.setPadding(new Insets(20));
+
+        Label title = new Label("Manage Halls");
+        title.setFont(Font.font("Segoe UI", FontWeight.BOLD, 24));
+
+        // 1. Add Hall Form
+        HBox form = new HBox(10);
+        TextField hallName = new TextField(); hallName.setPromptText("Hall Name (e.g. Room 101)");
+        TextField capacity = new TextField(); capacity.setPromptText("Capacity");
+        ComboBox<String> typeBox = new ComboBox<>();
+        typeBox.getItems().addAll("Classroom", "Lab", "Lecture Hall");
+        typeBox.setPromptText("Type");
+        typeBox.getSelectionModel().selectFirst();
+
+        Button addBtn = new Button("Add Hall");
+        addBtn.setStyle("-fx-background-color: #27ae60; -fx-text-fill: white;");
+
+        form.getChildren().addAll(hallName, capacity, typeBox, addBtn);
+
+        // 2. Halls Table
+        TableView<Hall> table = new TableView<>();
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+
+        TableColumn<Hall, String> idCol = new TableColumn<>("ID");
+        idCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("hallId"));
+
+        TableColumn<Hall, String> nameCol = new TableColumn<>("Name");
+        nameCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("hallName"));
+
+        TableColumn<Hall, Integer> capCol = new TableColumn<>("Capacity");
+        capCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("capacity"));
+
+        TableColumn<Hall, String> typeCol = new TableColumn<>("Type");
+        typeCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("hallType"));
+
+        TableColumn<Hall, Void> delCol = new TableColumn<>("Delete");
+        delCol.setCellFactory(param -> new TableCell<>() {
+            private final Button btn = new Button("X");
+            {
+                btn.setStyle("-fx-background-color: #e74c3c; -fx-text-fill: white;");
+                btn.setOnAction(e -> {
+                    Hall h = getTableView().getItems().get(getIndex());
+                    new AdminDAO().deleteHall(h.getHallId());
+                    root.setCenter(createHallsView(root)); // Refresh
+                });
+            }
+            @Override protected void updateItem(Void item, boolean empty) {
+                super.updateItem(item, empty);
+                setGraphic(empty ? null : btn);
+            }
+        });
+
+        table.getColumns().addAll(idCol, nameCol, capCol, typeCol, delCol);
+
+        // Load Data
+        AdminDAO dao = new AdminDAO();
+        table.getItems().addAll(dao.getAllHalls());
+
+        // Add Logic
+        addBtn.setOnAction(e -> {
+            try {
+                int cap = Integer.parseInt(capacity.getText());
+                if(dao.addHall(hallName.getText(), cap, typeBox.getValue())) {
+                    root.setCenter(createHallsView(root)); // Refresh
+                } else {
+                    new Alert(Alert.AlertType.ERROR, "Failed to add hall. Name might be duplicate.").show();
+                }
+            } catch (Exception ex) {
+                new Alert(Alert.AlertType.ERROR, "Invalid Capacity").show();
+            }
+        });
+
+        content.getChildren().addAll(title, form, table);
+        return content;
+    }
+
+    // =========================================
+    // VIEW C: Manage Courses (Updated with Hall Selection)
     // =========================================
     private VBox createCoursesView(BorderPane root) {
         VBox content = new VBox(15);
@@ -209,6 +297,8 @@ public class AdminDashboard {
 
         Label title = new Label("Manage Courses");
         title.setFont(Font.font("Segoe UI", FontWeight.BOLD, 24));
+
+        AdminDAO dao = new AdminDAO();
 
         // 1. Add Course Form
         GridPane form = new GridPane();
@@ -224,13 +314,23 @@ public class AdminDashboard {
 
         TextField start = new TextField(); start.setPromptText("Start (09:00 AM)");
         TextField end = new TextField(); end.setPromptText("End (10:30 AM)");
-        TextField room = new TextField(); room.setPromptText("Room");
+
+        // --- NEW: Hall Selection ---
+        ComboBox<Hall> hallBox = new ComboBox<>();
+        hallBox.getItems().addAll(dao.getAllHalls());
+        hallBox.setPromptText("Select Hall");
+        hallBox.setPrefWidth(150);
+        // Converter to show Hall Name in dropdown
+        hallBox.setConverter(new StringConverter<>() {
+            @Override public String toString(Hall hall) { return hall == null ? "" : hall.getHallName(); }
+            @Override public Hall fromString(String string) { return null; }
+        });
 
         Button addBtn = new Button("Create Course");
         addBtn.setStyle("-fx-background-color: #27ae60; -fx-text-fill: white;");
 
         form.addRow(0, code, name, cred, dayBox);
-        form.addRow(1, start, end, room, addBtn);
+        form.addRow(1, start, end, hallBox, addBtn); // Replaced Room TextField with Hall ComboBox
 
         // 2. Courses Table
         TableView<Course> table = new TableView<>();
@@ -244,6 +344,10 @@ public class AdminDashboard {
 
         TableColumn<Course, Integer> cCred = new TableColumn<>("Cr");
         cCred.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("credits"));
+
+        // Added Room Column
+        TableColumn<Course, String> cRoom = new TableColumn<>("Room");
+        cRoom.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("roomNumber")); // Displays Hall Name
 
         TableColumn<Course, Void> delCol = new TableColumn<>("Delete");
         delCol.setCellFactory(param -> new TableCell<>() {
@@ -262,16 +366,21 @@ public class AdminDashboard {
             }
         });
 
-        table.getColumns().addAll(cCode, cName, cCred, delCol);
+        table.getColumns().addAll(cCode, cName, cCred, cRoom, delCol);
 
-        AdminDAO dao = new AdminDAO();
         table.getItems().addAll(dao.getAllCourses());
 
         // Logic
         addBtn.setOnAction(e -> {
+            Hall selectedHall = hallBox.getValue();
+            if (selectedHall == null) {
+                new Alert(Alert.AlertType.ERROR, "Please select a Hall.").show();
+                return;
+            }
             try {
                 int cr = Integer.parseInt(cred.getText());
-                if(dao.addCourse(code.getText(), name.getText(), cr, dayBox.getValue(), start.getText(), end.getText(), room.getText())) {
+                // Pass Hall ID to the DAO
+                if(dao.addCourse(code.getText(), name.getText(), cr, dayBox.getValue(), start.getText(), end.getText(), selectedHall.getHallId())) {
                     root.setCenter(createCoursesView(root));
                 }
             } catch (Exception ex) {
@@ -284,7 +393,7 @@ public class AdminDashboard {
     }
 
     // =========================================
-    // VIEW C: Assign Teachers
+    // VIEW D: Assign Teachers
     // =========================================
     private VBox createAssignmentView(BorderPane root) {
         VBox content = new VBox(20);
@@ -343,7 +452,7 @@ public class AdminDashboard {
     }
 
     // =========================================
-    // VIEW D: Admin Profile (NEW)
+    // VIEW E: Admin Profile
     // =========================================
     private VBox createProfileView(Admin admin, BorderPane root) {
         VBox content = new VBox(15);
@@ -394,13 +503,11 @@ public class AdminDashboard {
         userField.setMaxWidth(400);
 
         Label lblF = new Label("Full Name:");
-        // Ensure we handle potential nulls for FullName
         TextField nameField = new TextField(admin.getPassword() != null ? admin.getPassword() : "");
         nameField.setMaxWidth(400);
 
         Label lblP = new Label("Password:");
         PasswordField passField = new PasswordField();
-        // FIX: Previously this was setting ProfilePicPath to the password field
         passField.setText(admin.getProfilePicPath());
         passField.setMaxWidth(400);
 
@@ -420,19 +527,11 @@ public class AdminDashboard {
             );
 
             if (success) {
-                // 1. RE-FETCH DATA
-                // We assume the username/password might have changed, so we use the NEW values to login/fetch
                 Admin updatedAdmin = dao.login(userField.getText(), passField.getText());
-
                 if (updatedAdmin != null) {
-                    // 2. REFRESH SIDEBAR (To show new Pic/Name)
                     root.setLeft(createSidebar(updatedAdmin, root));
-
-                    // 3. REFRESH CENTER (To show updated fields)
                     root.setCenter(createProfileView(updatedAdmin, root));
-
-                    Alert alert = new Alert(Alert.AlertType.INFORMATION, "Profile Updated Successfully!");
-                    alert.show();
+                    new Alert(Alert.AlertType.INFORMATION, "Profile Updated Successfully!").show();
                 } else {
                     statusLabel.setText("Saved, but could not refresh data.");
                     statusLabel.setTextFill(Color.ORANGE);

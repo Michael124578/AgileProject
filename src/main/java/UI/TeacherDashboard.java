@@ -1,10 +1,9 @@
 package UI;
 
+import DAO.ParentDAO;
 import DAO.StudentDAO;
 import DAO.TeacherDAO;
-import Model.Course;
-import Model.StudentGrade;
-import Model.Teacher;
+import Model.*;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -92,6 +91,7 @@ public class TeacherDashboard {
         Button dashBtn = createNavButton("My Courses", true);
         Button scheduleBtn = createNavButton("My Schedule", false);
         Button lmsBtn = createNavButton("LMS ->", false);
+        Button parentmsgBtn = createNavButton("Parent Messages", false);
         Button profileBtn = createNavButton("My Profile", false); // NEW
         Button logoutBtn = createNavButton("Logout", false);
 
@@ -99,6 +99,11 @@ public class TeacherDashboard {
         dashBtn.setOnAction(e -> {
             root.setCenter(createMainContent(teacher, root));
             setActive(dashBtn, profileBtn, logoutBtn);
+        });
+
+        parentmsgBtn.setOnAction(e -> {
+            root.setCenter(createParentMessagesView(teacher));
+            setActive(parentmsgBtn, dashBtn, scheduleBtn, profileBtn, logoutBtn);
         });
 
         scheduleBtn.setOnAction(e -> {
@@ -121,9 +126,86 @@ public class TeacherDashboard {
             try { new LoginScreen().show(new Stage()); } catch (Exception ex) {}
         });
 
-        navMenu.getChildren().addAll(dashBtn,scheduleBtn,lmsBtn, profileBtn, logoutBtn);
+        navMenu.getChildren().addAll(dashBtn,scheduleBtn,lmsBtn,parentmsgBtn, profileBtn, logoutBtn);
         sidebar.getChildren().addAll(profilePic, nameLabel, deptLabel, new Region(), navMenu);
         return sidebar;
+    }
+
+    private HBox createParentMessagesView(Teacher teacher) {
+        HBox content = new HBox(10);
+        content.setPadding(new Insets(20));
+
+        // Left: Parent List
+        ListView<Parent> parentList = new ListView<>();
+        ParentDAO dao = new ParentDAO();
+        parentList.getItems().addAll(dao.getParentsContactingTeacher(teacher.getTeacherId()));
+        parentList.setPrefWidth(250);
+
+        // --- NEW CODE START: Format the list items ---
+        parentList.setCellFactory(param -> new ListCell<Parent>() {
+            @Override
+            protected void updateItem(Parent item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                } else {
+                    // Format: "George John (Fady John)"
+                    setText(item.getFirstName() + " " + item.getLastName() + " (" + item.getStudentName() + ")");
+                }
+            }
+        });
+        // --- NEW CODE END ---
+
+        // Right: Chat
+        VBox chatBox = new VBox(10);
+        chatBox.setStyle("-fx-background-color: white; -fx-padding: 10; -fx-border-color: #ccc;");
+        HBox.setHgrow(chatBox, Priority.ALWAYS);
+
+        TextArea conversation = new TextArea();
+        conversation.setEditable(false);
+        VBox.setVgrow(conversation, Priority.ALWAYS);
+
+        HBox inputBox = new HBox(10);
+        TextField messageField = new TextField();
+        HBox.setHgrow(messageField, Priority.ALWAYS);
+        Button sendBtn = new Button("Reply");
+        sendBtn.setDisable(true);
+
+        inputBox.getChildren().addAll(messageField, sendBtn);
+        chatBox.getChildren().addAll(new Label("Chat with Parent"), conversation, inputBox);
+
+        parentList.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, parent) -> {
+            if (parent != null) {
+                sendBtn.setDisable(false);
+                refreshChat(conversation, parent.getParentId(), teacher.getTeacherId());
+            }
+        });
+
+        sendBtn.setOnAction(e -> {
+            Parent selected = parentList.getSelectionModel().getSelectedItem();
+            if (selected != null && !messageField.getText().trim().isEmpty()) {
+                dao.sendMessage(selected.getParentId(), teacher.getTeacherId(), messageField.getText(), "Teacher");
+                messageField.clear();
+                refreshChat(conversation, selected.getParentId(), teacher.getTeacherId());
+            }
+        });
+
+        // Use a VBox for the list side to keep the label above the list
+        VBox listSide = new VBox(5);
+        listSide.getChildren().addAll(new Label("Select Parent:"), parentList);
+
+        content.getChildren().addAll(listSide, chatBox);
+        return content;
+    }
+
+    private void refreshChat(TextArea area, int pid, int tid) {
+        ParentDAO dao = new ParentDAO();
+        List<Message> msgs = dao.getConversation(pid, tid);
+        StringBuilder sb = new StringBuilder();
+        for (Message m : msgs) {
+            sb.append(m.getFormatted()).append("\n");
+        }
+        area.setText(sb.toString());
     }
 
     private VBox createScheduleView(Teacher teacher, BorderPane root) {

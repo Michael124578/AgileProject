@@ -1,9 +1,11 @@
 package UI;
 
 import DAO.AdminDAO;
+import DAO.ParentDAO;
 import DAO.StudentDAO;
 import DAO.TeacherDAO;
 import Model.Admin;
+import Model.Parent;
 import Model.Student;
 import Model.Teacher;
 import javafx.geometry.Insets;
@@ -178,7 +180,17 @@ public class LoginScreen {
                 return;
             }
 
-            // 4. If all fail
+            // 4. Try Parent Login (NEW)
+            ParentDAO parentDAO = new ParentDAO();
+            Parent parent = parentDAO.login(email, pass);
+            if (parent != null) {
+                messageLabel.setText("Login Success! Welcome " + parent.getFirstName());
+                messageLabel.setTextFill(Color.GREEN);
+                new ParentDashboard().show(stage, parent);
+                return;
+            }
+
+            // 5. If all fail
             messageLabel.setText("Invalid Email or Password.");
             messageLabel.setTextFill(Color.RED);
         });

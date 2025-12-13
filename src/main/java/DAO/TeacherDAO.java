@@ -11,7 +11,7 @@ public class TeacherDAO {
 
     // 1. LOGIN
     public Teacher login(String email, String password) {
-        String sql = "SELECT TeacherID, FirstName, LastName, Email, Department, Password, ProfilePicPath  FROM Teachers WHERE Email = ? AND Password = ?";
+        String sql = "SELECT TeacherID, FirstName, LastName, Email, Department, Password, ProfilePicPath  FROM Teachers WHERE Email = ? AND Password = CONVERT(NVARCHAR(64), HASHBYTES('SHA2_256', ?), 2)";
 
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -89,8 +89,8 @@ public class TeacherDAO {
 
     //3. update profile info
     public boolean updateProfile(int teacherId, String fName, String lName, String email, String password, String dept, String picPath) {
-        String sql = "UPDATE Teachers SET FirstName=?, LastName=?, Email=?, Password=?, Department=?, ProfilePicPath=? WHERE TeacherID=?";
-
+        String sql = "UPDATE Teachers SET FirstName=?, LastName=?, Email=?, " +
+                "Password=CONVERT(NVARCHAR(64), HASHBYTES('SHA2_256', ?), 2), Department=?, ProfilePicPath=? WHERE TeacherID=?";
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 

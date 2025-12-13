@@ -21,8 +21,8 @@ public class StudentDAO {
     // ==========================================
     public Student login(String email, String password) {
         // Added GPA to the SELECT list
-        String sql = "SELECT StudentID, FirstName, LastName, Email, ProfilePicPath, GPA, creditHours, weeks, Password, Wallet, AmountToBePaid , CreditsToBePaid FROM Students WHERE Email = ? AND Password = ?";
-
+        String sql = "SELECT StudentID, FirstName, LastName, Email, ProfilePicPath, GPA, creditHours, weeks, Password, Wallet, AmountToBePaid , CreditsToBePaid " +
+                     "FROM Students WHERE Email = ? AND Password = CONVERT(NVARCHAR(64), HASHBYTES('SHA2_256', ?), 2)";
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
@@ -212,7 +212,8 @@ public class StudentDAO {
 
     public boolean updateStudentProfile(int studentId, String fName, String lName, String email, String password, String imagePath) {
         // Update SQL to include Email and Password
-        String sql = "UPDATE Students SET FirstName = ?, LastName = ?, Email = ?, Password = ?, ProfilePicPath = ? WHERE StudentID = ?";
+        String sql = "UPDATE Students SET FirstName = ?, LastName = ?, Email = ?, " +
+                "Password = CONVERT(NVARCHAR(64), HASHBYTES('SHA2_256', ?), 2), ProfilePicPath = ? WHERE StudentID = ?";
 
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {

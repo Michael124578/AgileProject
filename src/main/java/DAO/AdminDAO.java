@@ -16,7 +16,7 @@ public class AdminDAO {
 
     // 1. LOGIN
     public Admin login(String username, String password) {
-        String sql = "SELECT AdminID, Username,FullName, PasswordHash, ProfilePicPath FROM Admins WHERE Username = ? AND PasswordHash = ?";
+        String sql = "SELECT AdminID, Username,FullName, PasswordHash, ProfilePicPath FROM Admins WHERE Username = ? AND PasswordHash = CONVERT(NVARCHAR(64), HASHBYTES('SHA2_256', ?), 2)";
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, username);
@@ -59,7 +59,8 @@ public class AdminDAO {
     }
 
     public boolean addTeacher(String fName, String lName, String email, String dept, String password) {
-        String sql = "INSERT INTO Teachers (FirstName, LastName, Email, Department, Password, HireDate) VALUES (?, ?, ?, ?, ?, GETDATE())";
+        String sql = "INSERT INTO Teachers (FirstName, LastName, Email, Department, Password, HireDate) " +
+                "VALUES (?, ?, ?, ?, CONVERT(NVARCHAR(64), HASHBYTES('SHA2_256', ?), 2), GETDATE())";
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, fName);
@@ -266,7 +267,7 @@ public class AdminDAO {
     }
 
     public boolean updateProfile(int adminId, String username, String fullName, String password, String picPath) {
-        String sql = "UPDATE Admins SET Username = ?, FullName = ?, PasswordHash = ?, ProfilePicPath = ? WHERE AdminID = ?";
+        String sql = "UPDATE Admins SET Username = ?, FullName = ?, PasswordHash = CONVERT(NVARCHAR(64), HASHBYTES('SHA2_256', ?), 2), ProfilePicPath = ? WHERE AdminID = ?";
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, username);

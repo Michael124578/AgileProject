@@ -667,3 +667,59 @@ ALTER TABLE [dbo].[Enrollments] ENABLE TRIGGER [trg_AutoUpdateFeesOnEnrollment]
     GO
 ALTER DATABASE [SIS] SET  READ_WRITE
 GO
+
+
+USE SIS;
+GO
+
+-- Increase column size to accommodate SHA-256 hash (64 chars)
+ALTER TABLE Students ALTER COLUMN Password NVARCHAR(64);
+ALTER TABLE Teachers ALTER COLUMN Password NVARCHAR(64);
+-- Admin table already has NVARCHAR(255) for PasswordHash, so it is fine.
+
+
+USE [SIS]
+GO
+
+CREATE TABLE [dbo].[Materials](
+    [MaterialID] [int] IDENTITY(1,1) NOT NULL,
+    [CourseID] [int] NOT NULL,
+    [FileName] [nvarchar](255) NOT NULL,
+    [FilePath] [nvarchar](500) NOT NULL,
+    [UploadDate] [datetime] DEFAULT GETDATE(),
+    PRIMARY KEY CLUSTERED ([MaterialID] ASC),
+    FOREIGN KEY ([CourseID]) REFERENCES [dbo].[Courses] ([CourseID])
+    );
+GO
+
+
+USE [SIS]
+GO
+
+-- 1. Create Parents Table (Links to a Student)
+CREATE TABLE Parents (
+                         ParentID INT PRIMARY KEY IDENTITY(1,1),
+                         FirstName NVARCHAR(50) NOT NULL,
+                         LastName NVARCHAR(50) NOT NULL,
+                         Email NVARCHAR(100) UNIQUE NOT NULL,
+                         Password NVARCHAR(255) NOT NULL,
+                         StudentID INT NOT NULL, -- The child
+                         FOREIGN KEY (StudentID) REFERENCES Students(StudentID)
+);
+
+-- 2. Create Messages Table (Conversation between Parent and Teacher)
+CREATE TABLE Messages (
+                          MessageID INT PRIMARY KEY IDENTITY(1,1),
+                          ParentID INT NOT NULL,
+                          TeacherID INT NOT NULL,
+                          SenderType NVARCHAR(10) NOT NULL, -- 'Parent' or 'Teacher'
+                          MessageText NVARCHAR(MAX),
+                          SentDate DATETIME DEFAULT GETDATE(),
+                          FOREIGN KEY (ParentID) REFERENCES Parents(ParentID),
+                          FOREIGN KEY (TeacherID) REFERENCES Teachers(TeacherID)
+);
+
+-- 3. Insert Dummy Parent (Linked to StudentID 1 'Fady John')
+INSERT INTO Parents (FirstName, LastName, Email, Password, StudentID)
+VALUES ('George', 'John', 'p', 'p', 1);
+GO

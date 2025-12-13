@@ -210,6 +210,39 @@ public class StudentDAO {
         return false;
     }
 
+    public Student getStudentById(int studentId) {
+        String sql = "SELECT StudentID, FirstName, LastName, Email, ProfilePicPath, GPA, creditHours, weeks, Password, Wallet, AmountToBePaid , CreditsToBePaid " +
+                "FROM Students WHERE StudentID = ?";
+
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setInt(1, studentId);
+
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    return new Student(
+                            rs.getInt("StudentID"),
+                            rs.getString("FirstName"),
+                            rs.getString("LastName"),
+                            rs.getString("Email"),
+                            rs.getString("ProfilePicPath"),
+                            rs.getDouble("GPA"),
+                            rs.getInt("creditHours"),
+                            rs.getInt("weeks"),
+                            rs.getString("Password"),
+                            rs.getDouble("Wallet"),
+                            rs.getDouble("AmountToBePaid"),
+                            rs.getInt("CreditsToBePaid")
+                    );
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
     public boolean updateStudentProfile(int studentId, String fName, String lName, String email, String password, String imagePath) {
         // Update SQL to include Email and Password
         String sql = "UPDATE Students SET FirstName = ?, LastName = ?, Email = ?, " +

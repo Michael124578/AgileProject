@@ -91,6 +91,7 @@ public class TeacherDashboard {
         VBox navMenu = new VBox(5);
         Button dashBtn = createNavButton("My Courses", true);
         Button scheduleBtn = createNavButton("My Schedule", false);
+        Button lmsBtn = createNavButton("LMS ->", false);
         Button profileBtn = createNavButton("My Profile", false); // NEW
         Button logoutBtn = createNavButton("Logout", false);
 
@@ -104,6 +105,10 @@ public class TeacherDashboard {
             root.setCenter(createScheduleView(teacher, root));
             setActive(scheduleBtn, dashBtn, profileBtn, logoutBtn);
         });
+        lmsBtn.setOnAction(e -> {
+            root.setCenter(new LMSTeacherView().createView(teacher));
+            setActive(lmsBtn, dashBtn, scheduleBtn, profileBtn, logoutBtn);
+        });
 
         profileBtn.setOnAction(e -> {
             root.setCenter(createProfileView(teacher, root)); // NEW View
@@ -116,7 +121,7 @@ public class TeacherDashboard {
             try { new LoginScreen().show(new Stage()); } catch (Exception ex) {}
         });
 
-        navMenu.getChildren().addAll(dashBtn,scheduleBtn, profileBtn, logoutBtn);
+        navMenu.getChildren().addAll(dashBtn,scheduleBtn,lmsBtn, profileBtn, logoutBtn);
         sidebar.getChildren().addAll(profilePic, nameLabel, deptLabel, new Region(), navMenu);
         return sidebar;
     }

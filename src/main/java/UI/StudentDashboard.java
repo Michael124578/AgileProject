@@ -132,6 +132,7 @@ public class StudentDashboard {
         Button dashBtn = createNavButton("Dashboard", true); // Initially Active
         Button bookBtn = createNavButton("Book Hall", false); // NEW
         Button hallInfoBtn = createNavButton("Hall Info", false); // <--- NEW BUTTON
+        Button lmsBtn = createNavButton("LMS ->", false);
         Button profileBtn = createNavButton("Profile", false);
         Button logoutBtn = createNavButton("Logout", false);
 
@@ -139,6 +140,10 @@ public class StudentDashboard {
         dashBtn.setOnAction(e -> {
             root.setCenter(createMainContent(student, root));
             setActive(dashBtn, profileBtn, logoutBtn);
+        });
+        lmsBtn.setOnAction(e -> {
+            root.setCenter(new LMSStudentView().createView(student));
+            setActive(lmsBtn, dashBtn, bookBtn, hallInfoBtn, profileBtn, logoutBtn);
         });
 
         // 3. Profile Action (Switch View)
@@ -168,7 +173,7 @@ public class StudentDashboard {
             setActive(hallInfoBtn, dashBtn, bookBtn, profileBtn, logoutBtn);
         });
 
-        navMenu.getChildren().addAll(dashBtn, profileBtn,bookBtn,hallInfoBtn, logoutBtn );
+        navMenu.getChildren().addAll(dashBtn, profileBtn,lmsBtn, bookBtn,hallInfoBtn, logoutBtn );
 
         // Add everything to Sidebar
         sidebar.getChildren().addAll(profilePic, nameLabel, new Region(), navMenu);
@@ -591,7 +596,7 @@ public class StudentDashboard {
 
         if (success) {
             // 1. RE-LOGIN / REFRESH STUDENT (Crucial for updating financials)
-            Student updatedStudent = dao.login(student.getEmail(), student.getPassword());
+            Student updatedStudent = dao.getStudentById(student.getStudentId());
 
             Alert alert = new Alert(Alert.AlertType.INFORMATION, "Course Dropped Successfully. Fees updated.");
             alert.showAndWait();
@@ -693,7 +698,7 @@ public class StudentDashboard {
         boolean success = dao.registerCourse(student.getStudentId(), course.getCourseId(), "Spring", 2026);
 
         if (success) {
-            Student updatedStudent = dao.login(student.getEmail(), student.getPassword());
+            Student updatedStudent = dao.getStudentById(student.getStudentId());
             Alert alert = new Alert(Alert.AlertType.INFORMATION);
             alert.setTitle("Success");
             alert.setHeaderText(null);
@@ -873,7 +878,7 @@ public class StudentDashboard {
         title.setTextFill(Color.web("#2c3e50"));
 
         StudentDAO dao = new StudentDAO();
-        Student updatedStudent1=dao.login(student.getEmail(), student.getPassword());
+        Student updatedStudent1=dao.getStudentById(student.getStudentId());
 
         // 2. GET DATA SEPARATELY
         // Wallet = Money you HAVE.
@@ -929,7 +934,7 @@ public class StudentDashboard {
                     // IMPORTANT: RELOAD STUDENT DATA
                     // The current 'student' object still has the old numbers.
                     // We must fetch the updated values from the database to see the changes.
-                    Student updatedStudent = dao.login(student.getEmail(), student.getPassword());
+                    Student updatedStudent = dao.getStudentById(student.getStudentId());
 
                     // Refresh view with the NEW student object
                     root.setCenter(createFeesView(updatedStudent, root));

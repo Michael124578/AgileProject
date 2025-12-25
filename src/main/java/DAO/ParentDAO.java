@@ -14,7 +14,7 @@ public class ParentDAO {
                 "s.FirstName AS ChildFirst, s.LastName AS ChildLast " +
                 "FROM Parents p " +
                 "JOIN Students s ON p.StudentID = s.StudentID " +
-                "WHERE p.Email = ? AND p.Password = ?";
+                "WHERE p.Email = ? AND p.Password = CONVERT(NVARCHAR(64), HASHBYTES('SHA2_256', ?), 2)";
 
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {

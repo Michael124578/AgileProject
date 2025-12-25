@@ -87,28 +87,44 @@ public class TeacherDAO {
         return false;
     }
 
-    //3. update profile info
-    public boolean updateProfile(int teacherId, String fName, String lName, String email, String password, String dept, String picPath) {
+    public boolean verifyPassword(int teacherId, String oldPassword) {
+        String sql = "SELECT 1 FROM Teachers WHERE TeacherID = ? AND Password = CONVERT(NVARCHAR(64), HASHBYTES('SHA2_256', ?), 2)";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, teacherId);
+            pstmt.setString(2, oldPassword);
+            ResultSet rs = pstmt.executeQuery();
+            return rs.next();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    // 2. UPDATED: Update Profile
+    public boolean updateProfile(int teacherId, String fName, String lName, String email, String newPassword, String dept, String picPath) {
         String sql = "UPDATE Teachers SET FirstName=?, LastName=?, Email=?, " +
-                "Password=CONVERT(NVARCHAR(64), HASHBYTES('SHA2_256', ?), 2), Department=?, ProfilePicPath=? WHERE TeacherID=?";
+                "Password=CASE WHEN ? = '' THEN Password ELSE CONVERT(NVARCHAR(64), HASHBYTES('SHA2_256', ?), 2) END, " +
+                "Department=?, ProfilePicPath=? WHERE TeacherID=?";
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
             pstmt.setString(1, fName);
             pstmt.setString(2, lName);
             pstmt.setString(3, email);
-            pstmt.setString(4, password);
-            pstmt.setString(5, dept);
-            pstmt.setString(6, picPath);
-            pstmt.setInt(7, teacherId);
+            pstmt.setString(4, newPassword);
+            pstmt.setString(5, newPassword);
+            pstmt.setString(6, dept);
+            pstmt.setString(7, picPath);
+            pstmt.setInt(8, teacherId);
 
             return pstmt.executeUpdate() > 0;
         } catch (SQLException e) {
             e.printStackTrace();
             return false;
         }
-    }
-    // 2. Get Courses Taught by this Teacher
+    }    // 2. Get Courses Taught by this Teacher
+
     public List<Course> getTeacherCourses(int teacherId) {
         List<Course> list = new ArrayList<>();
 

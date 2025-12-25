@@ -105,7 +105,7 @@ public class LoginScreen {
         signupBtn.setStyle("-fx-background-color: #28a745; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 16px; -fx-background-radius: 25; -fx-cursor: hand;");
 
         // Add everything to Left Pane
-        leftPane.getChildren().addAll(logoView, titleLabel, descLabel, messageLabel, emailContainer, passContainer, loginBtn, /*orSeparator,*/ forgotPassLink, signupBtn);
+        leftPane.getChildren().addAll(logoView, titleLabel, descLabel, messageLabel, emailContainer, passContainer, loginBtn, /*orSeparator,*/ forgotPassLink);// , signupBtn
 
         // ==========================================
         // 2. RIGHT PANE: The Background Image

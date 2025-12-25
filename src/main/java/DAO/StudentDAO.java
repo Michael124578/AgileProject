@@ -243,10 +243,25 @@ public class StudentDAO {
         return null;
     }
 
-    public boolean updateStudentProfile(int studentId, String fName, String lName, String email, String password, String imagePath) {
-        // Update SQL to include Email and Password
+    public boolean verifyPassword(int studentId, String oldPassword) {
+        String sql = "SELECT 1 FROM Students WHERE StudentID = ? AND Password = CONVERT(NVARCHAR(64), HASHBYTES('SHA2_256', ?), 2)";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, studentId);
+            pstmt.setString(2, oldPassword);
+            ResultSet rs = pstmt.executeQuery();
+            return rs.next();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    // 2. UPDATED: Update Profile
+    public boolean updateStudentProfile(int studentId, String fName, String lName, String email, String newPassword, String imagePath) {
         String sql = "UPDATE Students SET FirstName = ?, LastName = ?, Email = ?, " +
-                "Password = CONVERT(NVARCHAR(64), HASHBYTES('SHA2_256', ?), 2), ProfilePicPath = ? WHERE StudentID = ?";
+                "Password = CASE WHEN ? = '' THEN Password ELSE CONVERT(NVARCHAR(64), HASHBYTES('SHA2_256', ?), 2) END, " +
+                "ProfilePicPath = ? WHERE StudentID = ?";
 
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -254,14 +269,14 @@ public class StudentDAO {
             pstmt.setString(1, fName);
             pstmt.setString(2, lName);
             pstmt.setString(3, email);
-            pstmt.setString(4, password);
-            pstmt.setString(5, imagePath);
-            pstmt.setInt(6, studentId);
+            pstmt.setString(4, newPassword);
+            pstmt.setString(5, newPassword);
+            pstmt.setString(6, imagePath);
+            pstmt.setInt(7, studentId);
 
-            int rows = pstmt.executeUpdate();
-            return rows > 0;
+            return pstmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            System.out.println("Update Error: " + e.getMessage());
+            e.printStackTrace();
             return false;
         }
     }
@@ -637,6 +652,37 @@ public class StudentDAO {
             }
         } catch (SQLException e) { e.printStackTrace(); }
 
+        return list;
+    }
+
+    public List<EnrolledCourse> getCompletedCourses(int studentId) {
+        List<EnrolledCourse> list = new ArrayList<>();
+        // Only fetch courses where Grade IS NOT NULL
+        String sql = "SELECT C.CourseCode, C.CourseName, C.Credits, E.Semester, E.Grade " +
+                "FROM Enrollments E " +
+                "JOIN Courses C ON E.CourseID = C.CourseID " +
+                "WHERE E.StudentID = ? AND E.Grade IS NOT NULL " +
+                "ORDER BY E.Year ASC, E.Semester ASC"; // Ordered chronologically
+
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setInt(1, studentId);
+
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    // We use the existing EnrolledCourse model, passing dummy values for schedule info
+                    list.add(new EnrolledCourse(
+                            rs.getString("CourseCode"),
+                            rs.getString("CourseName"),
+                            rs.getInt("Credits"),
+                            rs.getString("Semester"),
+                            rs.getDouble("Grade"),
+                            "", "", "", "", 0 // Dummy schedule data
+                    ));
+                }
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
         return list;
     }
 

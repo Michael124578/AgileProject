@@ -90,6 +90,8 @@ public class AdminDashboard {
         Button courseBtn = createNavButton("Manage Courses", false);
         Button assignBtn = createNavButton("Assign Teachers", false);
         Button issueBtn = createNavButton("Reported Issues", false); // NEW BUTTON
+        Button regBtn = createNavButton("Register Student/Parent", false);
+        Button financeBtn = createNavButton("Student Finances", false);
         Button profileBtn = createNavButton("My Profile", false);
         Button logoutBtn = createNavButton("Logout", false);
 
@@ -122,6 +124,14 @@ public class AdminDashboard {
             root.setCenter(createIssuesView(root));
             setActive(issueBtn, teachBtn, hallBtn, courseBtn, assignBtn, profileBtn, logoutBtn);
         });
+        regBtn.setOnAction(e -> {
+            root.setCenter(createStudentParentRegisterView(root));
+            setActive(regBtn, teachBtn, hallBtn, courseBtn, assignBtn, issueBtn, profileBtn, logoutBtn);
+        });
+        financeBtn.setOnAction(e -> {
+            root.setCenter(createFinancesView(root));
+            setActive(financeBtn, teachBtn, hallBtn, courseBtn, assignBtn, issueBtn, regBtn, profileBtn, logoutBtn);
+        });
 
         logoutBtn.setOnAction(e -> {
             Stage current = (Stage) logoutBtn.getScene().getWindow();
@@ -129,7 +139,7 @@ public class AdminDashboard {
             try { new LoginScreen().show(new Stage()); } catch (Exception ex) {}
         });
 
-        navMenu.getChildren().addAll(teachBtn, hallBtn, courseBtn, issueBtn, assignBtn, profileBtn, logoutBtn);
+        navMenu.getChildren().addAll(teachBtn, hallBtn, courseBtn, issueBtn,regBtn, assignBtn, financeBtn, profileBtn, logoutBtn);
         sidebar.getChildren().addAll(profilePic, nameLabel, new Region(), navMenu);
         return sidebar;
     }
@@ -508,10 +518,18 @@ public class AdminDashboard {
         TextField nameField = new TextField(admin.getFullName() != null ? admin.getFullName() : "");
         nameField.setMaxWidth(400);
 
-        Label lblP = new Label("Password:");
-        PasswordField passField = new PasswordField();
-        passField.setText(admin.getPassword());
-        passField.setMaxWidth(400);
+        Label lblOldP = new Label("Old Password (Required if changing password):");
+        PasswordField oldPassField = new PasswordField();
+        oldPassField.setMaxWidth(400);
+
+        Label lblNewP = new Label("New Password (Leave empty to keep current):");
+        PasswordField newPassField = new PasswordField();
+        newPassField.setMaxWidth(400);
+
+//        Label lblP = new Label("New Password:");
+//        PasswordField passField = new PasswordField();
+//        //passField.setText(admin.getPassword());
+//        passField.setMaxWidth(400);
 
         Button saveBtn = new Button("Save Changes");
         saveBtn.setStyle("-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
@@ -519,32 +537,139 @@ public class AdminDashboard {
 
         // --- SAVE LOGIC ---
         saveBtn.setOnAction(e -> {
+            String newPass = newPassField.getText();
+            String oldPass = oldPassField.getText();
             AdminDAO dao = new AdminDAO();
+
+            // LOGIC: Check if new pass is NOT empty
+            if (!newPass.isEmpty()) {
+                // 1. Check if Old Pass provided
+                if (oldPass.isEmpty()) {
+                    new Alert(Alert.AlertType.ERROR, "Please enter your Old Password to confirm changes.").show();
+                    return;
+                }
+                // 2. Verify Old Pass
+                if (!dao.verifyPassword(admin.getAdminId(), oldPass)) {
+                    new Alert(Alert.AlertType.ERROR, "Incorrect Old Password.").show();
+                    return;
+                }
+                // 3. Optional: Validate New Pass strength
+                if (!Model.Register.isValidPassword(newPass)) {
+                    new Alert(Alert.AlertType.ERROR, "New Password is too weak. but we will continue for ease of use now").show();
+                    //return;
+                }
+            }
+            if(newPass.isEmpty() && !oldPass.isEmpty()){
+                new Alert(Alert.AlertType.ERROR, "Enter New Password.").show(); return;
+            }
+
+            // If we get here, either NewPass is empty (so we ignore it) OR NewPass is valid and verified.
             boolean success = dao.updateProfile(
                     admin.getAdminId(),
                     userField.getText(),
                     nameField.getText(),
-                    passField.getText(),
+                    newPass, // If empty, DAO keeps old password
                     newImagePath.toString()
             );
 
             if (success) {
-                Admin updatedAdmin = dao.login(userField.getText(), passField.getText());
-                if (updatedAdmin != null) {
-                    root.setLeft(createSidebar(updatedAdmin, root));
-                    root.setCenter(createProfileView(updatedAdmin, root));
-                    new Alert(Alert.AlertType.INFORMATION, "Profile Updated Successfully!").show();
-                } else {
-                    statusLabel.setText("Saved, but could not refresh data.");
-                    statusLabel.setTextFill(Color.ORANGE);
-                }
+                new Alert(Alert.AlertType.INFORMATION, "Profile Updated Successfully!").show();
+                oldPassField.clear();
+                newPassField.clear();
             } else {
-                statusLabel.setText("Update Failed. Username might be taken.");
-                statusLabel.setTextFill(Color.RED);
+                new Alert(Alert.AlertType.ERROR, "Update Failed.").show();
             }
         });
 
-        content.getChildren().addAll(title, picSection, lblU, userField, lblF, nameField, lblP, passField, new Region(), saveBtn, statusLabel);
+        content.getChildren().addAll(title, picSection, lblU, userField, lblF, nameField, lblOldP, oldPassField, lblNewP, newPassField, new Region(), saveBtn, statusLabel);
+        return content;
+    }
+
+    private VBox createStudentParentRegisterView(BorderPane root) {
+        VBox content = new VBox(20);
+        content.setPadding(new Insets(30));
+        content.setAlignment(Pos.TOP_LEFT);
+
+        Label title = new Label("Register New Student & Parent");
+        title.setFont(Font.font("Segoe UI", FontWeight.BOLD, 24));
+
+        // --- Student Section ---
+        Label lblStudent = new Label("Student Details");
+        lblStudent.setFont(Font.font("Segoe UI", FontWeight.BOLD, 16));
+        lblStudent.setTextFill(Color.web("#2980b9"));
+
+        TextField sFName = new TextField(); sFName.setPromptText("Student First Name");
+        TextField sLName = new TextField(); sLName.setPromptText("Student Last Name");
+        TextField sEmail = new TextField(); sEmail.setPromptText("Student Email");
+        PasswordField sPass = new PasswordField(); sPass.setPromptText("Student Password");
+
+        GridPane sGrid = new GridPane();
+        sGrid.setHgap(10); sGrid.setVgap(10);
+        sGrid.addRow(0, sFName, sLName);
+        sGrid.addRow(1, sEmail, sPass);
+
+        // --- Parent Section ---
+        Label lblParent = new Label("Parent Details");
+        lblParent.setFont(Font.font("Segoe UI", FontWeight.BOLD, 16));
+        lblParent.setTextFill(Color.web("#27ae60"));
+
+        TextField pFName = new TextField(); pFName.setPromptText("Parent First Name");
+        TextField pLName = new TextField(); pLName.setPromptText("Parent Last Name");
+        TextField pEmail = new TextField(); pEmail.setPromptText("Parent Email");
+        PasswordField pPass = new PasswordField(); pPass.setPromptText("Parent Password");
+
+        GridPane pGrid = new GridPane();
+        pGrid.setHgap(10); pGrid.setVgap(10);
+        pGrid.addRow(0, pFName, pLName);
+        pGrid.addRow(1, pEmail, pPass);
+
+        // --- Action ---
+        Button registerBtn = new Button("Create Accounts");
+        registerBtn.setStyle("-fx-background-color: #2c3e50; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 10 20;");
+
+        Label statusLabel = new Label();
+
+        registerBtn.setOnAction(e -> {
+            // 1. Validate Input (Using your existing Register model logic)
+            if (!Register.isValidFirstName(sFName.getText()) || !Register.isValidFirstName(pFName.getText())) {
+                new Alert(Alert.AlertType.ERROR, "Invalid First Name(s). Must start with Capital.").show();
+                return;
+            }
+            if (!Register.isValidLastName(sLName.getText()) || !Register.isValidLastName(pLName.getText())) {
+                new Alert(Alert.AlertType.ERROR, "Invalid Last Name(s).").show();
+                return;
+            }
+            if (!Register.isValidEmail(sEmail.getText()) || !Register.isValidEmail(pEmail.getText())) {
+                new Alert(Alert.AlertType.ERROR, "Invalid Email format.").show();
+                return;
+            }
+            if (!Register.isValidPassword(sPass.getText()) || !Register.isValidPassword(pPass.getText())) {
+                new Alert(Alert.AlertType.ERROR, "Weak Password. Needs 8+ chars, Upper, Lower, Number, Special.").show();
+                return;
+            }
+            if (sEmail.getText().equalsIgnoreCase(pEmail.getText())) {
+                new Alert(Alert.AlertType.ERROR, "Student and Parent cannot share the same email.").show();
+                return;
+            }
+
+            // 2. Call DAO
+            AdminDAO dao = new AdminDAO();
+            boolean success = dao.registerStudentAndParent(
+                    sFName.getText(), sLName.getText(), sEmail.getText(), sPass.getText(),
+                    pFName.getText(), pLName.getText(), pEmail.getText(), pPass.getText()
+            );
+
+            if (success) {
+                new Alert(Alert.AlertType.INFORMATION, "Accounts created successfully!").show();
+                // Clear fields
+                sFName.clear(); sLName.clear(); sEmail.clear(); sPass.clear();
+                pFName.clear(); pLName.clear(); pEmail.clear(); pPass.clear();
+            } else {
+                new Alert(Alert.AlertType.ERROR, "Registration Failed. Emails might be duplicates.").show();
+            }
+        });
+
+        content.getChildren().addAll(title, lblStudent, sGrid, new Separator(), lblParent, pGrid, new Separator(), registerBtn, statusLabel);
         return content;
     }
 
@@ -682,4 +807,120 @@ public class AdminDashboard {
         content.getChildren().addAll(title, table);
         return content;
     }
+
+    private VBox createFinancesView(BorderPane root) {
+        VBox content = new VBox(15);
+        content.setPadding(new Insets(20));
+
+        Label title = new Label("Student Financial Status");
+        title.setFont(Font.font("Segoe UI", FontWeight.BOLD, 24));
+
+        // Table
+        TableView<Student> table = new TableView<>();
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+
+        // 1. Basic Info Columns
+        TableColumn<Student, String> idCol = new TableColumn<>("ID");
+        idCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("studentId"));
+
+        TableColumn<Student, String> nameCol = new TableColumn<>("Full Name");
+        nameCol.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(
+                cell.getValue().getFirstName() + " " + cell.getValue().getLastName()
+        ));
+
+        // 2. Wallet Balance Column
+        TableColumn<Student, String> walletCol = new TableColumn<>("Wallet Balance");
+        walletCol.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(
+                String.format("%.2f EGP", cell.getValue().getWallet())
+        ));
+
+        // 3. Debt/Tuition Column
+        TableColumn<Student, String> debtCol = new TableColumn<>("Tuition Debt");
+        debtCol.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(
+                String.format("%.2f EGP", cell.getValue().getAmountToBePaid())
+        ));
+
+        // 4. Status Column (Paid vs Unpaid)
+        TableColumn<Student, String> statusCol = new TableColumn<>("Status");
+        statusCol.setCellFactory(column -> new TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty) {
+                    setText(null);
+                    setGraphic(null);
+                } else {
+                    Student s = getTableView().getItems().get(getIndex());
+                    if (s.getAmountToBePaid() <= 0) {
+                        setText("PAID");
+                        setTextFill(Color.GREEN);
+                        setStyle("-fx-font-weight: bold;");
+                    } else {
+                        setText("UNPAID");
+                        setTextFill(Color.RED);
+                        setStyle("-fx-font-weight: bold;");
+                    }
+                }
+            }
+        });
+
+        // 5. Action Column: Add Funds
+        TableColumn<Student, Void> actionCol = new TableColumn<>("Action");
+        actionCol.setCellFactory(param -> new TableCell<>() {
+            private final Button btn = new Button("Add Funds");
+            {
+                btn.setStyle("-fx-background-color: #2980b9; -fx-text-fill: white; -fx-cursor: hand;");
+                btn.setOnAction(e -> {
+                    Student s = getTableView().getItems().get(getIndex());
+                    handleAddFunds(s, root);
+                });
+            }
+            @Override
+            protected void updateItem(Void item, boolean empty) {
+                super.updateItem(item, empty);
+                setGraphic(empty ? null : btn);
+            }
+        });
+
+        table.getColumns().addAll(idCol, nameCol, walletCol, debtCol, statusCol, actionCol);
+
+        // Load Data
+        AdminDAO dao = new AdminDAO();
+        table.getItems().addAll(dao.getAllStudents());
+
+        content.getChildren().addAll(title, table);
+        return content;
+    }
+
+    // Helper: Logic to Add Funds via Dialog
+    private void handleAddFunds(Student student, BorderPane root) {
+        TextInputDialog dialog = new TextInputDialog();
+        dialog.setTitle("Add Funds");
+        dialog.setHeaderText("Add money to " + student.getFirstName() + "'s Wallet");
+        dialog.setContentText("Enter Amount (EGP):");
+
+        dialog.showAndWait().ifPresent(amountStr -> {
+            try {
+                double amount = Double.parseDouble(amountStr);
+                if (amount <= 0) {
+                    new Alert(Alert.AlertType.ERROR, "Amount must be positive.").show();
+                    return;
+                }
+
+                AdminDAO dao = new AdminDAO();
+                if (dao.addStudentFunds(student.getStudentId(), amount)) {
+                    new Alert(Alert.AlertType.INFORMATION, "Funds added successfully!").show();
+                    // Refresh View
+                    root.setCenter(createFinancesView(root));
+                } else {
+                    new Alert(Alert.AlertType.ERROR, "Failed to add funds.").show();
+                }
+
+            } catch (NumberFormatException e) {
+                new Alert(Alert.AlertType.ERROR, "Invalid number format.").show();
+            }
+        });
+    }
+
+
 }

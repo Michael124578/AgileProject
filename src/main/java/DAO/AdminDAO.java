@@ -16,7 +16,7 @@ public class AdminDAO {
 
     // 1. LOGIN
     public Admin login(String username, String password) {
-        String sql = "SELECT AdminID, Username,FullName, PasswordHash, ProfilePicPath FROM Admins WHERE Username = ? AND PasswordHash = CONVERT(NVARCHAR(64), HASHBYTES('SHA2_256', ?), 2)";
+        String sql = "SELECT AdminID, Username,FullName, PasswordHash, ProfilePicPath FROM vw_Admins WHERE Username = ? AND PasswordHash = CONVERT(NVARCHAR(64), HASHBYTES('SHA2_256', ?), 2)";
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, username);
@@ -91,7 +91,7 @@ public class AdminDAO {
     // Get All Halls
     public List<Hall> getAllHalls() {
         List<Hall> list = new ArrayList<>();
-        String sql = "SELECT * FROM Halls";
+        String sql = "SELECT * FROM vw_Halls";
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql);
              ResultSet rs = pstmt.executeQuery()) {
@@ -110,16 +110,56 @@ public class AdminDAO {
 
     // Add Hall
     public boolean addHall(String name, int capacity, String type) {
-        String sql = "INSERT INTO Halls (HallName, Capacity, HallType, IsActive) VALUES (?, ?, ?, 1)";
-        try (Connection conn = DatabaseManager.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setString(1, name);
-            pstmt.setInt(2, capacity);
-            pstmt.setString(3, type);
-            return pstmt.executeUpdate() > 0;
+        Connection conn = null;
+        try {
+            conn = DatabaseManager.getConnection();
+            conn.setAutoCommit(false); // Start Transaction
+
+            // 1. Insert into Entity Table (Halls)
+            String sqlEntity = "INSERT INTO Halls (HallName) VALUES (?)";
+            PreparedStatement stmtEntity = conn.prepareStatement(sqlEntity, java.sql.Statement.RETURN_GENERATED_KEYS);
+            stmtEntity.setString(1, name);
+            stmtEntity.executeUpdate();
+
+            // Get the new HallID
+            ResultSet rs = stmtEntity.getGeneratedKeys();
+            int hallId = 0;
+            if (rs.next()) hallId = rs.getInt(1);
+            else throw new SQLException("Failed to get Hall ID");
+
+            // 2. Insert Attributes into HallValues
+            String sqlAttr = "INSERT INTO HallValues (HallID, AttrID, Value) " +
+                    "SELECT ?, AttrID, ? FROM HallAttributes WHERE AttrName = ?";
+
+            PreparedStatement stmtAttr = conn.prepareStatement(sqlAttr);
+
+            // Insert Capacity
+            stmtAttr.setInt(1, hallId);
+            stmtAttr.setString(2, String.valueOf(capacity));
+            stmtAttr.setString(3, "Capacity");
+            stmtAttr.executeUpdate();
+
+            // Insert HallType
+            stmtAttr.setInt(1, hallId);
+            stmtAttr.setString(2, type);
+            stmtAttr.setString(3, "HallType");
+            stmtAttr.executeUpdate();
+
+            // Insert IsActive (Default 1)
+            stmtAttr.setInt(1, hallId);
+            stmtAttr.setString(2, "1");
+            stmtAttr.setString(3, "IsActive");
+            stmtAttr.executeUpdate();
+
+            conn.commit(); // Commit Transaction
+            return true;
+
         } catch (SQLException e) {
-            System.out.println("Add Hall Error: " + e.getMessage());
+            if (conn != null) try { conn.rollback(); } catch (SQLException ex) {}
+            e.printStackTrace();
             return false;
+        } finally {
+            if (conn != null) try { conn.close(); } catch (SQLException e) {}
         }
     }
 
@@ -266,19 +306,186 @@ public class AdminDAO {
         }
     }
 
-    public boolean updateProfile(int adminId, String username, String fullName, String password, String picPath) {
-        String sql = "UPDATE Admins SET Username = ?, FullName = ?, PasswordHash = CONVERT(NVARCHAR(64), HASHBYTES('SHA2_256', ?), 2), ProfilePicPath = ? WHERE AdminID = ?";
+    public boolean verifyPassword(int adminId, String oldPassword) {
+        String sql = "SELECT 1 FROM Admins WHERE AdminID = ? AND PasswordHash = CONVERT(NVARCHAR(64), HASHBYTES('SHA2_256', ?), 2)";
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setString(1, username);
-            pstmt.setString(2, fullName);
-            pstmt.setString(3, password);
-            pstmt.setString(4, picPath);
-            pstmt.setInt(5, adminId);
-            return pstmt.executeUpdate() > 0;
+            pstmt.setInt(1, adminId);
+            pstmt.setString(2, oldPassword);
+            ResultSet rs = pstmt.executeQuery();
+            return rs.next(); // Returns true if match found
         } catch (SQLException e) {
             e.printStackTrace();
             return false;
         }
     }
+
+    // 2. UPDATED: Update Profile (Conditional Password Logic)
+    public boolean updateProfile(int adminId, String username, String fullName, String newPassword, String picPath) {
+        Connection conn = null;
+        try {
+            conn = DatabaseManager.getConnection();
+            conn.setAutoCommit(false);
+
+            // 1. Update Base Table (Admins) - Username and Password
+            String sqlBase = "UPDATE Admins SET Username = ?, " +
+                    "PasswordHash = CASE WHEN ? = '' THEN PasswordHash ELSE CONVERT(NVARCHAR(64), HASHBYTES('SHA2_256', ?), 2) END " +
+                    "WHERE AdminID = ?";
+            PreparedStatement stmtBase = conn.prepareStatement(sqlBase);
+            stmtBase.setString(1, username);
+            stmtBase.setString(2, newPassword);
+            stmtBase.setString(3, newPassword);
+            stmtBase.setInt(4, adminId);
+            stmtBase.executeUpdate();
+
+            // 2. Update Attributes (AdminValues)
+            // We use a helper SQL to update the specific attribute by joining names
+            String sqlAttr = "UPDATE V SET Value = ? " +
+                    "FROM AdminValues V " +
+                    "JOIN AdminAttributes A ON V.AttrID = A.AttrID " +
+                    "WHERE V.AdminID = ? AND A.AttrName = ?";
+
+            PreparedStatement stmtAttr = conn.prepareStatement(sqlAttr);
+
+            // Update FullName
+            stmtAttr.setString(1, fullName);
+            stmtAttr.setInt(2, adminId);
+            stmtAttr.setString(3, "FullName");
+            stmtAttr.executeUpdate();
+
+            // Update ProfilePicPath
+            stmtAttr.setString(1, picPath);
+            stmtAttr.setInt(2, adminId);
+            stmtAttr.setString(3, "ProfilePicPath");
+            stmtAttr.executeUpdate();
+
+            conn.commit();
+            return true;
+        } catch (SQLException e) {
+            if (conn != null) try { conn.rollback(); } catch (SQLException ex) {}
+            e.printStackTrace();
+            return false;
+        } finally {
+            if (conn != null) try { conn.close(); } catch (SQLException e) {}
+        }
+    }
+
+
+    public boolean registerStudentAndParent(String sFirst, String sLast, String sEmail, String sPass,
+                                            String pFirst, String pLast, String pEmail, String pPass) {
+        Connection conn = null;
+        PreparedStatement stmtStudent = null;
+        PreparedStatement stmtParent = null;
+        ResultSet generatedKeys = null;
+
+        // SQL to insert Student and hash password
+        String sqlStudent = "INSERT INTO Students (FirstName, LastName, Email, Password, EnrollmentDate) " +
+                "VALUES (?, ?, ?, CONVERT(NVARCHAR(64), HASHBYTES('SHA2_256', ?), 2), GETDATE())";
+
+        // SQL to insert Parent linked to the new StudentID
+        String sqlParent = "INSERT INTO Parents (FirstName, LastName, Email, Password, StudentID) " +
+                "VALUES (?, ?, ?, CONVERT(NVARCHAR(64), HASHBYTES('SHA2_256', ?), 2), ?)";
+
+        try {
+            conn = DatabaseManager.getConnection();
+            conn.setAutoCommit(false); // START TRANSACTION
+
+            // 1. Insert Student
+            stmtStudent = conn.prepareStatement(sqlStudent, java.sql.Statement.RETURN_GENERATED_KEYS);
+            stmtStudent.setString(1, sFirst);
+            stmtStudent.setString(2, sLast);
+            stmtStudent.setString(3, sEmail);
+            stmtStudent.setString(4, sPass);
+
+            int affectedRows = stmtStudent.executeUpdate();
+            if (affectedRows == 0) {
+                throw new SQLException("Creating student failed, no rows affected.");
+            }
+
+            // 2. Retrieve the generated StudentID
+            generatedKeys = stmtStudent.getGeneratedKeys();
+            int studentId;
+            if (generatedKeys.next()) {
+                studentId = generatedKeys.getInt(1);
+            } else {
+                throw new SQLException("Creating student failed, no ID obtained.");
+            }
+
+            // 3. Insert Parent linked to StudentID
+            stmtParent = conn.prepareStatement(sqlParent);
+            stmtParent.setString(1, pFirst);
+            stmtParent.setString(2, pLast);
+            stmtParent.setString(3, pEmail);
+            stmtParent.setString(4, pPass);
+            stmtParent.setInt(5, studentId); // Link to child
+
+            stmtParent.executeUpdate();
+
+            conn.commit(); // COMMIT TRANSACTION
+            return true;
+
+        } catch (SQLException e) {
+            // Rollback if any error occurs
+            if (conn != null) {
+                try { conn.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
+            }
+            System.err.println("Transaction Failed: " + e.getMessage());
+            return false;
+        } finally {
+            // Close resources carefully
+            try { if (generatedKeys != null) generatedKeys.close(); } catch (SQLException e) { e.printStackTrace(); }
+            try { if (stmtStudent != null) stmtStudent.close(); } catch (SQLException e) { e.printStackTrace(); }
+            try { if (stmtParent != null) stmtParent.close(); } catch (SQLException e) { e.printStackTrace(); }
+            try { if (conn != null) conn.close(); } catch (SQLException e) { e.printStackTrace(); }
+        }
+    }
+
+    public List<Model.Student> getAllStudents() {
+        List<Model.Student> list = new ArrayList<>();
+        // Select all columns to populate the Student model fully
+        String sql = "SELECT * FROM Students";
+
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql);
+             ResultSet rs = pstmt.executeQuery()) {
+
+            while (rs.next()) {
+                list.add(new Model.Student(
+                        rs.getInt("StudentID"),
+                        rs.getString("FirstName"),
+                        rs.getString("LastName"),
+                        rs.getString("Email"),
+                        rs.getString("ProfilePicPath"),
+                        rs.getDouble("GPA"),
+                        rs.getInt("creditHours"),
+                        rs.getInt("weeks"),
+                        rs.getString("Password"),
+                        rs.getDouble("Wallet"),
+                        rs.getDouble("AmountToBePaid"),
+                        rs.getInt("CreditsToBePaid")
+                ));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    // 2. Add Funds to Student Wallet
+    public boolean addStudentFunds(int studentId, double amount) {
+        String sql = "UPDATE Students SET Wallet = Wallet + ? WHERE StudentID = ?";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setDouble(1, amount);
+            pstmt.setInt(2, studentId);
+
+            return pstmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            System.err.println("Add Funds Error: " + e.getMessage());
+            return false;
+        }
+    }
+
+
 }

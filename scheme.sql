@@ -1,6 +1,6 @@
 USE [master]
 GO
-/****** Object:  Database [SIS]    Script Date: 09-Dec-25 10:14:23 PM ******/
+/****** Object:  Database [SIS]    Script Date: 26-Dec-25 2:42:09 AM ******/
 CREATE DATABASE [SIS]
  CONTAINMENT = NONE
  ON  PRIMARY
@@ -84,7 +84,7 @@ ALTER DATABASE [SIS] SET QUERY_STORE (OPERATION_MODE = READ_WRITE, CLEANUP_POLIC
 GO
 USE [SIS]
 GO
-/****** Object:  UserDefinedFunction [dbo].[GetQualityPoints]    Script Date: 09-Dec-25 10:14:24 PM ******/
+/****** Object:  UserDefinedFunction [dbo].[GetQualityPoints]    Script Date: 26-Dec-25 2:42:10 AM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -221,7 +221,73 @@ RETURN 0.00; -- Fail
 END;
 
 GO
-/****** Object:  Table [dbo].[Admins]    Script Date: 09-Dec-25 10:14:24 PM ******/
+/****** Object:  Table [dbo].[Halls]    Script Date: 26-Dec-25 2:42:10 AM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[Halls](
+    [HallID] [int] IDENTITY(1,1) NOT NULL,
+    [HallName] [nvarchar](50) NOT NULL,
+    PRIMARY KEY CLUSTERED
+(
+[HallID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+    ) ON [PRIMARY]
+    GO
+/****** Object:  Table [dbo].[HallAttributes]    Script Date: 26-Dec-25 2:42:10 AM ******/
+    SET ANSI_NULLS ON
+    GO
+    SET QUOTED_IDENTIFIER ON
+    GO
+CREATE TABLE [dbo].[HallAttributes](
+    [AttrID] [int] IDENTITY(1,1) NOT NULL,
+    [AttrName] [nvarchar](50) NOT NULL,
+    PRIMARY KEY CLUSTERED
+(
+[AttrID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+    ) ON [PRIMARY]
+    GO
+/****** Object:  Table [dbo].[HallValues]    Script Date: 26-Dec-25 2:42:10 AM ******/
+    SET ANSI_NULLS ON
+    GO
+    SET QUOTED_IDENTIFIER ON
+    GO
+CREATE TABLE [dbo].[HallValues](
+    [ValueID] [int] IDENTITY(1,1) NOT NULL,
+    [HallID] [int] NOT NULL,
+    [AttrID] [int] NOT NULL,
+    [Value] [nvarchar](max) NULL,
+    PRIMARY KEY CLUSTERED
+(
+[ValueID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+    ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+    GO
+/****** Object:  View [dbo].[vw_Halls]    Script Date: 26-Dec-25 2:42:10 AM ******/
+    SET ANSI_NULLS ON
+    GO
+    SET QUOTED_IDENTIFIER ON
+    GO
+
+-- 4. View for compatibility
+CREATE VIEW [dbo].[vw_Halls] AS
+SELECT
+    H.HallID,
+    H.HallName,
+    CAST((SELECT Value FROM HallValues HV
+                                JOIN HallAttributes HA ON HV.AttrID = HA.AttrID
+          WHERE HV.HallID = H.HallID AND HA.AttrName = 'Capacity') AS INT) AS Capacity,
+    CAST((SELECT Value FROM HallValues HV
+                                JOIN HallAttributes HA ON HV.AttrID = HA.AttrID
+          WHERE HV.HallID = H.HallID AND HA.AttrName = 'IsActive') AS BIT) AS IsActive,
+    (SELECT Value FROM HallValues HV
+                           JOIN HallAttributes HA ON HV.AttrID = HA.AttrID
+     WHERE HV.HallID = H.HallID AND HA.AttrName = 'HallType') AS HallType
+FROM Halls H;
+GO
+/****** Object:  Table [dbo].[Admins]    Script Date: 26-Dec-25 2:42:10 AM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -230,20 +296,71 @@ CREATE TABLE [dbo].[Admins](
     [AdminID] [int] IDENTITY(1,1) NOT NULL,
     [Username] [nvarchar](50) NOT NULL,
     [PasswordHash] [nvarchar](255) NOT NULL,
-    [FullName] [nvarchar](100) NULL,
     [CreatedAt] [datetime] NULL,
-    [ProfilePicPath] [nvarchar](500) NULL,
     PRIMARY KEY CLUSTERED
 (
 [AdminID] ASC
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
     ) ON [PRIMARY]
     GO
-/****** Object:  Table [dbo].[Courses]    Script Date: 09-Dec-25 10:14:24 PM ******/
+/****** Object:  Table [dbo].[AdminAttributes]    Script Date: 26-Dec-25 2:42:10 AM ******/
     SET ANSI_NULLS ON
     GO
     SET QUOTED_IDENTIFIER ON
     GO
+CREATE TABLE [dbo].[AdminAttributes](
+    [AttrID] [int] IDENTITY(1,1) NOT NULL,
+    [AttrName] [nvarchar](50) NOT NULL,
+    PRIMARY KEY CLUSTERED
+(
+[AttrID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+    ) ON [PRIMARY]
+    GO
+/****** Object:  Table [dbo].[AdminValues]    Script Date: 26-Dec-25 2:42:10 AM ******/
+    SET ANSI_NULLS ON
+    GO
+    SET QUOTED_IDENTIFIER ON
+    GO
+CREATE TABLE [dbo].[AdminValues](
+    [ValueID] [int] IDENTITY(1,1) NOT NULL,
+    [AdminID] [int] NOT NULL,
+    [AttrID] [int] NOT NULL,
+    [Value] [nvarchar](max) NULL,
+    PRIMARY KEY CLUSTERED
+(
+[ValueID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+    ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+    GO
+/****** Object:  View [dbo].[vw_Admins]    Script Date: 26-Dec-25 2:42:10 AM ******/
+    SET ANSI_NULLS ON
+    GO
+    SET QUOTED_IDENTIFIER ON
+    GO
+-- =============================================
+-- VIEW: vw_Admins (Reconstructs original table)
+-- =============================================
+CREATE VIEW [dbo].[vw_Admins] AS
+SELECT
+    A.AdminID,
+    A.Username,
+    A.PasswordHash,
+    (SELECT Value FROM AdminValues AV
+                           JOIN AdminAttributes AA ON AV.AttrID = AA.AttrID
+     WHERE AV.AdminID = A.AdminID AND AA.AttrName = 'FullName') AS FullName,
+    A.CreatedAt,
+    (SELECT Value FROM AdminValues AV
+                           JOIN AdminAttributes AA ON AV.AttrID = AA.AttrID
+     WHERE AV.AdminID = A.AdminID AND AA.AttrName = 'ProfilePicPath') AS ProfilePicPath
+FROM Admins A;
+
+GO
+/****** Object:  Table [dbo].[Courses]    Script Date: 26-Dec-25 2:42:10 AM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
 CREATE TABLE [dbo].[Courses](
     [CourseID] [int] IDENTITY(1,1) NOT NULL,
     [CourseCode] [nvarchar](10) NOT NULL,
@@ -261,7 +378,7 @@ CREATE TABLE [dbo].[Courses](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
     ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
     GO
-/****** Object:  Table [dbo].[Enrollments]    Script Date: 09-Dec-25 10:14:24 PM ******/
+/****** Object:  Table [dbo].[Enrollments]    Script Date: 26-Dec-25 2:42:10 AM ******/
     SET ANSI_NULLS ON
     GO
     SET QUOTED_IDENTIFIER ON
@@ -280,7 +397,7 @@ CREATE TABLE [dbo].[Enrollments](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
     ) ON [PRIMARY]
     GO
-/****** Object:  Table [dbo].[HallBookings]    Script Date: 09-Dec-25 10:14:24 PM ******/
+/****** Object:  Table [dbo].[HallBookings]    Script Date: 26-Dec-25 2:42:10 AM ******/
     SET ANSI_NULLS ON
     GO
     SET QUOTED_IDENTIFIER ON
@@ -301,7 +418,7 @@ CREATE TABLE [dbo].[HallBookings](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
     ) ON [PRIMARY]
     GO
-/****** Object:  Table [dbo].[HallIssues]    Script Date: 09-Dec-25 10:14:24 PM ******/
+/****** Object:  Table [dbo].[HallIssues]    Script Date: 26-Dec-25 2:42:10 AM ******/
     SET ANSI_NULLS ON
     GO
     SET QUOTED_IDENTIFIER ON
@@ -320,24 +437,60 @@ CREATE TABLE [dbo].[HallIssues](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
     ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
     GO
-/****** Object:  Table [dbo].[Halls]    Script Date: 09-Dec-25 10:14:24 PM ******/
+/****** Object:  Table [dbo].[Materials]    Script Date: 26-Dec-25 2:42:10 AM ******/
     SET ANSI_NULLS ON
     GO
     SET QUOTED_IDENTIFIER ON
     GO
-CREATE TABLE [dbo].[Halls](
-    [HallID] [int] IDENTITY(1,1) NOT NULL,
-    [HallName] [nvarchar](50) NOT NULL,
-    [Capacity] [int] NULL,
-    [IsActive] [bit] NULL,
-    [HallType] [nvarchar](50) NULL,
+CREATE TABLE [dbo].[Materials](
+    [MaterialID] [int] IDENTITY(1,1) NOT NULL,
+    [CourseID] [int] NOT NULL,
+    [FileName] [nvarchar](255) NOT NULL,
+    [FilePath] [nvarchar](500) NOT NULL,
+    [UploadDate] [datetime] NULL,
     PRIMARY KEY CLUSTERED
 (
-[HallID] ASC
+[MaterialID] ASC
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
     ) ON [PRIMARY]
     GO
-/****** Object:  Table [dbo].[Payments]    Script Date: 09-Dec-25 10:14:24 PM ******/
+/****** Object:  Table [dbo].[Messages]    Script Date: 26-Dec-25 2:42:10 AM ******/
+    SET ANSI_NULLS ON
+    GO
+    SET QUOTED_IDENTIFIER ON
+    GO
+CREATE TABLE [dbo].[Messages](
+    [MessageID] [int] IDENTITY(1,1) NOT NULL,
+    [ParentID] [int] NOT NULL,
+    [TeacherID] [int] NOT NULL,
+    [SenderType] [nvarchar](10) NOT NULL,
+    [MessageText] [nvarchar](max) NULL,
+    [SentDate] [datetime] NULL,
+    PRIMARY KEY CLUSTERED
+(
+[MessageID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+    ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+    GO
+/****** Object:  Table [dbo].[Parents]    Script Date: 26-Dec-25 2:42:10 AM ******/
+    SET ANSI_NULLS ON
+    GO
+    SET QUOTED_IDENTIFIER ON
+    GO
+CREATE TABLE [dbo].[Parents](
+    [ParentID] [int] IDENTITY(1,1) NOT NULL,
+    [FirstName] [nvarchar](50) NOT NULL,
+    [LastName] [nvarchar](50) NOT NULL,
+    [Email] [nvarchar](100) NOT NULL,
+    [Password] [nvarchar](255) NOT NULL,
+    [StudentID] [int] NOT NULL,
+    PRIMARY KEY CLUSTERED
+(
+[ParentID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+    ) ON [PRIMARY]
+    GO
+/****** Object:  Table [dbo].[Payments]    Script Date: 26-Dec-25 2:42:10 AM ******/
     SET ANSI_NULLS ON
     GO
     SET QUOTED_IDENTIFIER ON
@@ -353,7 +506,7 @@ CREATE TABLE [dbo].[Payments](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
     ) ON [PRIMARY]
     GO
-/****** Object:  Table [dbo].[Students]    Script Date: 09-Dec-25 10:14:24 PM ******/
+/****** Object:  Table [dbo].[Students]    Script Date: 26-Dec-25 2:42:10 AM ******/
     SET ANSI_NULLS ON
     GO
     SET QUOTED_IDENTIFIER ON
@@ -365,7 +518,7 @@ CREATE TABLE [dbo].[Students](
     [Email] [nvarchar](100) NULL,
     [PhoneNumber] [nvarchar](20) NULL,
     [EnrollmentDate] [datetime] NULL,
-    [Password] [nvarchar](50) NULL,
+    [Password] [nvarchar](64) NULL,
     [ProfilePicPath] [nvarchar](500) NULL,
     [GPA] [float] NULL,
     [creditHours] [int] NULL,
@@ -379,7 +532,7 @@ CREATE TABLE [dbo].[Students](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
     ) ON [PRIMARY]
     GO
-/****** Object:  Table [dbo].[TeacherAssignments]    Script Date: 09-Dec-25 10:14:24 PM ******/
+/****** Object:  Table [dbo].[TeacherAssignments]    Script Date: 26-Dec-25 2:42:10 AM ******/
     SET ANSI_NULLS ON
     GO
     SET QUOTED_IDENTIFIER ON
@@ -396,7 +549,7 @@ CREATE TABLE [dbo].[TeacherAssignments](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
     ) ON [PRIMARY]
     GO
-/****** Object:  Table [dbo].[Teachers]    Script Date: 09-Dec-25 10:14:24 PM ******/
+/****** Object:  Table [dbo].[Teachers]    Script Date: 26-Dec-25 2:42:10 AM ******/
     SET ANSI_NULLS ON
     GO
     SET QUOTED_IDENTIFIER ON
@@ -408,7 +561,7 @@ CREATE TABLE [dbo].[Teachers](
     [Email] [nvarchar](100) NULL,
     [Department] [nvarchar](50) NULL,
     [HireDate] [date] NULL,
-    [Password] [nvarchar](50) NULL,
+    [Password] [nvarchar](64) NULL,
     [ProfilePicPath] [nvarchar](500) NULL,
     PRIMARY KEY CLUSTERED
 (
@@ -416,10 +569,22 @@ CREATE TABLE [dbo].[Teachers](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
     ) ON [PRIMARY]
     GO
+    SET IDENTITY_INSERT [dbo].[AdminAttributes] ON
+
+    INSERT [dbo].[AdminAttributes] ([AttrID], [AttrName]) VALUES (1, N'FullName')
+    INSERT [dbo].[AdminAttributes] ([AttrID], [AttrName]) VALUES (2, N'ProfilePicPath')
+    SET IDENTITY_INSERT [dbo].[AdminAttributes] OFF
+    GO
     SET IDENTITY_INSERT [dbo].[Admins] ON
 
-    INSERT [dbo].[Admins] ([AdminID], [Username], [PasswordHash], [FullName], [CreatedAt], [ProfilePicPath]) VALUES (1, N'a', N'aa', N'System Administrator', CAST(N'2025-11-19T17:58:43.973' AS DateTime), N'C:\Users\fadij\Desktop\Fady John Fayek\cert.png')
+    INSERT [dbo].[Admins] ([AdminID], [Username], [PasswordHash], [CreatedAt]) VALUES (1, N'a', N'7D8E61117E9A1AB2808F295546661F921BBE7E20C0158C7E81B5D1C13654B457', CAST(N'2025-11-19T17:58:43.973' AS DateTime))
     SET IDENTITY_INSERT [dbo].[Admins] OFF
+    GO
+    SET IDENTITY_INSERT [dbo].[AdminValues] ON
+
+    INSERT [dbo].[AdminValues] ([ValueID], [AdminID], [AttrID], [Value]) VALUES (3, 1, 1, N'System Administrator')
+    INSERT [dbo].[AdminValues] ([ValueID], [AdminID], [AttrID], [Value]) VALUES (4, 1, 2, N'C:\Users\fadij\Desktop\Fady John Fayek\cert.png')
+    SET IDENTITY_INSERT [dbo].[AdminValues] OFF
     GO
     SET IDENTITY_INSERT [dbo].[Courses] ON
 
@@ -432,42 +597,91 @@ CREATE TABLE [dbo].[Teachers](
 
     INSERT [dbo].[Enrollments] ([EnrollmentID], [StudentID], [CourseID], [EnrollmentDate], [Grade], [Semester], [Year]) VALUES (24, 4, 1, CAST(N'2025-11-20T03:03:41.217' AS DateTime), CAST(100.00 AS Decimal(5, 2)), N'Spring', 2026)
     INSERT [dbo].[Enrollments] ([EnrollmentID], [StudentID], [CourseID], [EnrollmentDate], [Grade], [Semester], [Year]) VALUES (25, 4, 2, CAST(N'2025-11-20T03:03:43.080' AS DateTime), CAST(95.00 AS Decimal(5, 2)), N'Spring', 2026)
-    INSERT [dbo].[Enrollments] ([EnrollmentID], [StudentID], [CourseID], [EnrollmentDate], [Grade], [Semester], [Year]) VALUES (30, 1, 1, CAST(N'2025-11-20T18:48:47.743' AS DateTime), CAST(40.00 AS Decimal(5, 2)), N'Spring', 2026)
+    INSERT [dbo].[Enrollments] ([EnrollmentID], [StudentID], [CourseID], [EnrollmentDate], [Grade], [Semester], [Year]) VALUES (30, 1, 1, CAST(N'2025-11-20T18:48:47.743' AS DateTime), CAST(60.00 AS Decimal(5, 2)), N'Spring', 2026)
     INSERT [dbo].[Enrollments] ([EnrollmentID], [StudentID], [CourseID], [EnrollmentDate], [Grade], [Semester], [Year]) VALUES (31, 1, 2, CAST(N'2025-11-20T18:48:49.690' AS DateTime), CAST(90.00 AS Decimal(5, 2)), N'Spring', 2026)
     INSERT [dbo].[Enrollments] ([EnrollmentID], [StudentID], [CourseID], [EnrollmentDate], [Grade], [Semester], [Year]) VALUES (32, 9, 1, CAST(N'2025-11-20T21:32:10.013' AS DateTime), NULL, N'Spring', 2026)
     INSERT [dbo].[Enrollments] ([EnrollmentID], [StudentID], [CourseID], [EnrollmentDate], [Grade], [Semester], [Year]) VALUES (33, 9, 2, CAST(N'2025-11-20T21:32:11.610' AS DateTime), NULL, N'Spring', 2026)
     INSERT [dbo].[Enrollments] ([EnrollmentID], [StudentID], [CourseID], [EnrollmentDate], [Grade], [Semester], [Year]) VALUES (34, 10, 1, CAST(N'2025-11-22T11:54:39.800' AS DateTime), NULL, N'Spring', 2026)
     INSERT [dbo].[Enrollments] ([EnrollmentID], [StudentID], [CourseID], [EnrollmentDate], [Grade], [Semester], [Year]) VALUES (35, 10, 2, CAST(N'2025-11-22T12:17:09.533' AS DateTime), NULL, N'Spring', 2026)
-    INSERT [dbo].[Enrollments] ([EnrollmentID], [StudentID], [CourseID], [EnrollmentDate], [Grade], [Semester], [Year]) VALUES (36, 1, 3, CAST(N'2025-12-09T21:46:24.403' AS DateTime), NULL, N'Spring', 2026)
+    INSERT [dbo].[Enrollments] ([EnrollmentID], [StudentID], [CourseID], [EnrollmentDate], [Grade], [Semester], [Year]) VALUES (37, 4, 3, CAST(N'2025-12-09T22:16:36.013' AS DateTime), NULL, N'Spring', 2026)
+    INSERT [dbo].[Enrollments] ([EnrollmentID], [StudentID], [CourseID], [EnrollmentDate], [Grade], [Semester], [Year]) VALUES (39, 1, 3, CAST(N'2025-12-13T20:48:05.400' AS DateTime), NULL, N'Spring', 2026)
+    INSERT [dbo].[Enrollments] ([EnrollmentID], [StudentID], [CourseID], [EnrollmentDate], [Grade], [Semester], [Year]) VALUES (40, 12, 2, CAST(N'2025-12-25T23:49:51.203' AS DateTime), NULL, N'Spring', 2026)
+    INSERT [dbo].[Enrollments] ([EnrollmentID], [StudentID], [CourseID], [EnrollmentDate], [Grade], [Semester], [Year]) VALUES (41, 12, 3, CAST(N'2025-12-25T23:49:53.223' AS DateTime), NULL, N'Spring', 2026)
     SET IDENTITY_INSERT [dbo].[Enrollments] OFF
+    GO
+    SET IDENTITY_INSERT [dbo].[HallAttributes] ON
+
+    INSERT [dbo].[HallAttributes] ([AttrID], [AttrName]) VALUES (1, N'Capacity')
+    INSERT [dbo].[HallAttributes] ([AttrID], [AttrName]) VALUES (3, N'HallType')
+    INSERT [dbo].[HallAttributes] ([AttrID], [AttrName]) VALUES (2, N'IsActive')
+    SET IDENTITY_INSERT [dbo].[HallAttributes] OFF
     GO
     SET IDENTITY_INSERT [dbo].[HallBookings] ON
 
     INSERT [dbo].[HallBookings] ([BookingID], [HallID], [StudentID], [BookingDate], [StartTime], [EndTime], [Purpose], [Status], [CreatedAt]) VALUES (1, 1, 1, CAST(N'2026-01-14' AS Date), N'09:00 AM', N'10:30 AM', N'working on a project', N'Confirmed', CAST(N'2025-12-09T22:05:21.353' AS DateTime))
+    INSERT [dbo].[HallBookings] ([BookingID], [HallID], [StudentID], [BookingDate], [StartTime], [EndTime], [Purpose], [Status], [CreatedAt]) VALUES (2, 3, 4, CAST(N'2026-01-01' AS Date), N'08:30 AM', N'09:30 AM', N'assignmnet', N'Confirmed', CAST(N'2025-12-09T22:17:54.360' AS DateTime))
+    INSERT [dbo].[HallBookings] ([BookingID], [HallID], [StudentID], [BookingDate], [StartTime], [EndTime], [Purpose], [Status], [CreatedAt]) VALUES (3, 2, 1, CAST(N'2025-12-10' AS Date), N'05:30 PM', N'06:15 PM', N'study', N'Confirmed', CAST(N'2025-12-09T22:22:16.390' AS DateTime))
     SET IDENTITY_INSERT [dbo].[HallBookings] OFF
     GO
     SET IDENTITY_INSERT [dbo].[HallIssues] ON
 
     INSERT [dbo].[HallIssues] ([IssueID], [HallID], [ReporterID], [ReporterType], [IssueDescription], [Status], [ReportedDate]) VALUES (1, 1, 1, N'Student', N'Projector is flickering.', N'Resolved', CAST(N'2025-12-09T20:50:09.910' AS DateTime))
     INSERT [dbo].[HallIssues] ([IssueID], [HallID], [ReporterID], [ReporterType], [IssueDescription], [Status], [ReportedDate]) VALUES (2, 2, 1, N'Student', N'PC number 4 isn''t working', N'Open', CAST(N'2025-12-09T21:47:02.090' AS DateTime))
+    INSERT [dbo].[HallIssues] ([IssueID], [HallID], [ReporterID], [ReporterType], [IssueDescription], [Status], [ReportedDate]) VALUES (3, 2, 4, N'Student', N'room is not clean', N'Resolved', CAST(N'2025-12-09T22:17:01.497' AS DateTime))
+    INSERT [dbo].[HallIssues] ([IssueID], [HallID], [ReporterID], [ReporterType], [IssueDescription], [Status], [ReportedDate]) VALUES (4, 2, 1, N'Teacher', N'e7na f agile lab', N'Resolved', CAST(N'2025-12-14T11:21:35.080' AS DateTime))
     SET IDENTITY_INSERT [dbo].[HallIssues] OFF
     GO
     SET IDENTITY_INSERT [dbo].[Halls] ON
 
-    INSERT [dbo].[Halls] ([HallID], [HallName], [Capacity], [IsActive], [HallType]) VALUES (1, N'Lab 2', 30, 1, N'Classroom')
-    INSERT [dbo].[Halls] ([HallID], [HallName], [Capacity], [IsActive], [HallType]) VALUES (2, N'Room 101', 30, 1, N'Classroom')
-    INSERT [dbo].[Halls] ([HallID], [HallName], [Capacity], [IsActive], [HallType]) VALUES (3, N'Physics Lab', 25, 1, N'Lab')
+    INSERT [dbo].[Halls] ([HallID], [HallName]) VALUES (1, N'Lab 2')
+    INSERT [dbo].[Halls] ([HallID], [HallName]) VALUES (2, N'Room 101')
+    INSERT [dbo].[Halls] ([HallID], [HallName]) VALUES (3, N'Physics Lab')
     SET IDENTITY_INSERT [dbo].[Halls] OFF
+    GO
+    SET IDENTITY_INSERT [dbo].[HallValues] ON
+
+    INSERT [dbo].[HallValues] ([ValueID], [HallID], [AttrID], [Value]) VALUES (1, 1, 1, N'30')
+    INSERT [dbo].[HallValues] ([ValueID], [HallID], [AttrID], [Value]) VALUES (2, 1, 2, N'1')
+    INSERT [dbo].[HallValues] ([ValueID], [HallID], [AttrID], [Value]) VALUES (3, 1, 3, N'Classroom')
+    INSERT [dbo].[HallValues] ([ValueID], [HallID], [AttrID], [Value]) VALUES (4, 2, 1, N'30')
+    INSERT [dbo].[HallValues] ([ValueID], [HallID], [AttrID], [Value]) VALUES (5, 2, 2, N'1')
+    INSERT [dbo].[HallValues] ([ValueID], [HallID], [AttrID], [Value]) VALUES (6, 2, 3, N'Classroom')
+    INSERT [dbo].[HallValues] ([ValueID], [HallID], [AttrID], [Value]) VALUES (7, 3, 1, N'25')
+    INSERT [dbo].[HallValues] ([ValueID], [HallID], [AttrID], [Value]) VALUES (8, 3, 2, N'1')
+    INSERT [dbo].[HallValues] ([ValueID], [HallID], [AttrID], [Value]) VALUES (9, 3, 3, N'Lab')
+    SET IDENTITY_INSERT [dbo].[HallValues] OFF
+    GO
+    SET IDENTITY_INSERT [dbo].[Materials] ON
+
+    INSERT [dbo].[Materials] ([MaterialID], [CourseID], [FileName], [FilePath], [UploadDate]) VALUES (1, 1, N'Lecture 1 Ch1 Software Processes_m1.pdf', N'D:\senior 1 Fall25\CSE233_Agile_Software_Emgineering\Lectures\Lecture 1 Ch1 Software Processes_m1.pdf', CAST(N'2025-12-13T20:37:05.910' AS DateTime))
+    INSERT [dbo].[Materials] ([MaterialID], [CourseID], [FileName], [FilePath], [UploadDate]) VALUES (2, 2, N'Lecture 4 -Agile Requirements Management.pdf', N'D:\senior 1 Fall25\CSE233_Agile_Software_Emgineering\Lectures\Lecture 4 -Agile Requirements Management.pdf', CAST(N'2025-12-13T20:39:32.690' AS DateTime))
+    INSERT [dbo].[Materials] ([MaterialID], [CourseID], [FileName], [FilePath], [UploadDate]) VALUES (3, 1, N'Lecture 2 Ch2 Introduction to agile_m1.pdf', N'D:\senior 1 Fall25\CSE233_Agile_Software_Emgineering\Lectures\Lecture 2 Ch2 Introduction to agile_m1.pdf', CAST(N'2025-12-13T22:42:45.560' AS DateTime))
+    INSERT [dbo].[Materials] ([MaterialID], [CourseID], [FileName], [FilePath], [UploadDate]) VALUES (4, 3, N'Lecture 5-6 - Mastering the Scrum Product Backlog.pdf', N'D:\senior 1 Fall25\CSE233_Agile_Software_Emgineering\Lectures\Lecture 5-6 - Mastering the Scrum Product Backlog.pdf', CAST(N'2025-12-14T11:21:52.723' AS DateTime))
+    SET IDENTITY_INSERT [dbo].[Materials] OFF
+    GO
+    SET IDENTITY_INSERT [dbo].[Messages] ON
+
+    INSERT [dbo].[Messages] ([MessageID], [ParentID], [TeacherID], [SenderType], [MessageText], [SentDate]) VALUES (1, 1, 1, N'Parent', N'why my kid had 40 out of 100 ??', CAST(N'2025-12-13T21:05:04.813' AS DateTime))
+    INSERT [dbo].[Messages] ([MessageID], [ParentID], [TeacherID], [SenderType], [MessageText], [SentDate]) VALUES (2, 1, 1, N'Teacher', N'because he has to work on himself more', CAST(N'2025-12-13T21:05:51.490' AS DateTime))
+    INSERT [dbo].[Messages] ([MessageID], [ParentID], [TeacherID], [SenderType], [MessageText], [SentDate]) VALUES (3, 1, 1, N'Teacher', N'updated him to 60.0', CAST(N'2025-12-13T21:07:01.433' AS DateTime))
+    SET IDENTITY_INSERT [dbo].[Messages] OFF
+    GO
+    SET IDENTITY_INSERT [dbo].[Parents] ON
+
+    INSERT [dbo].[Parents] ([ParentID], [FirstName], [LastName], [Email], [Password], [StudentID]) VALUES (1, N'John', N'Fayek', N'p', N'882A20E6379EB83AECB916F4B9EA79C1E6C08A0D80F6AD1DC9A9421758246001', 1)
+    INSERT [dbo].[Parents] ([ParentID], [FirstName], [LastName], [Email], [Password], [StudentID]) VALUES (2, N'Ptest', N'Ptest', N'ptest@gmail.com', N'19668F5D4B038E9584F865FD5CA9D99750B380D7BDF1C865C45DDB122986D9D2', 12)
+    SET IDENTITY_INSERT [dbo].[Parents] OFF
     GO
     SET IDENTITY_INSERT [dbo].[Students] ON
 
-    INSERT [dbo].[Students] ([StudentID], [FirstName], [LastName], [Email], [PhoneNumber], [EnrollmentDate], [Password], [ProfilePicPath], [GPA], [creditHours], [weeks], [Wallet], [AmountToBePaid], [CreditsToBePaid]) VALUES (1, N'Fady', N'John', N'f', NULL, CAST(N'2025-11-19T17:58:43.977' AS DateTime), N'f', N'C:\Users\fadij\Desktop\Fady John Fayek\graduation pic - Copy.jpg', 2.11, NULL, NULL, CAST(72000.00 AS Decimal(10, 2)), N'4500.00', N'2')
+    INSERT [dbo].[Students] ([StudentID], [FirstName], [LastName], [Email], [PhoneNumber], [EnrollmentDate], [Password], [ProfilePicPath], [GPA], [creditHours], [weeks], [Wallet], [AmountToBePaid], [CreditsToBePaid]) VALUES (1, N'Fady', N'John', N'f', NULL, CAST(N'2025-11-19T17:58:43.977' AS DateTime), N'887A0529FD9D76EB33C0EC808C05DAAF32FA9F5E21E4C32224FB4BFAAA0AF385', N'C:\Users\fadij\Desktop\Fady John Fayek\graduation pic - Copy.jpg', 2.54, NULL, NULL, CAST(72000.00 AS Decimal(10, 2)), N'4500.00', N'2')
     INSERT [dbo].[Students] ([StudentID], [FirstName], [LastName], [Email], [PhoneNumber], [EnrollmentDate], [Password], [ProfilePicPath], [GPA], [creditHours], [weeks], [Wallet], [AmountToBePaid], [CreditsToBePaid]) VALUES (2, N'Bob', N'Builder', N'bob@student.edu', NULL, CAST(N'2025-11-19T17:58:43.977' AS DateTime), NULL, NULL, NULL, NULL, NULL, CAST(0.00 AS Decimal(10, 2)), N'0', N'0')
-    INSERT [dbo].[Students] ([StudentID], [FirstName], [LastName], [Email], [PhoneNumber], [EnrollmentDate], [Password], [ProfilePicPath], [GPA], [creditHours], [weeks], [Wallet], [AmountToBePaid], [CreditsToBePaid]) VALUES (3, N'John', N'Doe', N'john.doe@gmail.com', NULL, CAST(N'2025-11-19T18:51:16.527' AS DateTime), N'P@ssword123', NULL, NULL, NULL, NULL, CAST(0.00 AS Decimal(10, 2)), N'0', N'0')
-    INSERT [dbo].[Students] ([StudentID], [FirstName], [LastName], [Email], [PhoneNumber], [EnrollmentDate], [Password], [ProfilePicPath], [GPA], [creditHours], [weeks], [Wallet], [AmountToBePaid], [CreditsToBePaid]) VALUES (4, N'Michael', N'Nagi', N'm', NULL, CAST(N'2025-11-20T00:36:42.230' AS DateTime), N'm', NULL, 4, NULL, NULL, CAST(193500.00 AS Decimal(10, 2)), N'0.00', N'0')
-    INSERT [dbo].[Students] ([StudentID], [FirstName], [LastName], [Email], [PhoneNumber], [EnrollmentDate], [Password], [ProfilePicPath], [GPA], [creditHours], [weeks], [Wallet], [AmountToBePaid], [CreditsToBePaid]) VALUES (9, N'Farid', N'Fahmy', N'Farid@gmail.com', NULL, CAST(N'2025-11-20T21:31:26.247' AS DateTime), N'Farid@12345', NULL, NULL, NULL, NULL, CAST(0.00 AS Decimal(10, 2)), N'17500.00', N'7')
-    INSERT [dbo].[Students] ([StudentID], [FirstName], [LastName], [Email], [PhoneNumber], [EnrollmentDate], [Password], [ProfilePicPath], [GPA], [creditHours], [weeks], [Wallet], [AmountToBePaid], [CreditsToBePaid]) VALUES (10, N'Fady', N'John', N'fadijohn9@gmail.com', NULL, CAST(N'2025-11-22T11:54:03.267' AS DateTime), N'F@di12345', N'C:\Users\fadij\Desktop\Fady John Fayek\graduation pic - Copy.jpg', NULL, NULL, NULL, CAST(0.00 AS Decimal(10, 2)), N'17500.00', N'7')
-    INSERT [dbo].[Students] ([StudentID], [FirstName], [LastName], [Email], [PhoneNumber], [EnrollmentDate], [Password], [ProfilePicPath], [GPA], [creditHours], [weeks], [Wallet], [AmountToBePaid], [CreditsToBePaid]) VALUES (11, N'Michael', N'Nagi', N'miky@gmail.com', NULL, CAST(N'2025-11-22T12:24:38.533' AS DateTime), N'123mnbMNB@', N'C:\Users\fadij\Desktop\Fady John Fayek\graduation pic - Copy.jpg', NULL, NULL, NULL, CAST(0.00 AS Decimal(10, 2)), NULL, NULL)
+    INSERT [dbo].[Students] ([StudentID], [FirstName], [LastName], [Email], [PhoneNumber], [EnrollmentDate], [Password], [ProfilePicPath], [GPA], [creditHours], [weeks], [Wallet], [AmountToBePaid], [CreditsToBePaid]) VALUES (3, N'John', N'Doe', N'john.doe@gmail.com', NULL, CAST(N'2025-11-19T18:51:16.527' AS DateTime), N'C00881432C8AE0599F4574A4D8DE685ADDB0B29657DAC1C4E2EE3C61E6684689', N'', NULL, NULL, NULL, CAST(0.00 AS Decimal(10, 2)), N'0', N'0')
+    INSERT [dbo].[Students] ([StudentID], [FirstName], [LastName], [Email], [PhoneNumber], [EnrollmentDate], [Password], [ProfilePicPath], [GPA], [creditHours], [weeks], [Wallet], [AmountToBePaid], [CreditsToBePaid]) VALUES (4, N'Michael', N'Nagi', N'm', NULL, CAST(N'2025-11-20T00:36:42.230' AS DateTime), N'187355B101E4D1F66C7948F93D109B63E1E0E5EC14EBA8043E6428AFF3A3E4CA', N'', 4, NULL, NULL, CAST(193500.00 AS Decimal(10, 2)), N'5000.00', N'2')
+    INSERT [dbo].[Students] ([StudentID], [FirstName], [LastName], [Email], [PhoneNumber], [EnrollmentDate], [Password], [ProfilePicPath], [GPA], [creditHours], [weeks], [Wallet], [AmountToBePaid], [CreditsToBePaid]) VALUES (9, N'Farid', N'Fahmy', N'Farid@gmail.com', NULL, CAST(N'2025-11-20T21:31:26.247' AS DateTime), N'381E954A4AF6557E323287FEF4FE7E68FC012E0858B1DCE9B43D93437A128CC5', N'', NULL, NULL, NULL, CAST(0.00 AS Decimal(10, 2)), N'17500.00', N'7')
+    INSERT [dbo].[Students] ([StudentID], [FirstName], [LastName], [Email], [PhoneNumber], [EnrollmentDate], [Password], [ProfilePicPath], [GPA], [creditHours], [weeks], [Wallet], [AmountToBePaid], [CreditsToBePaid]) VALUES (10, N'Fady', N'John', N'fadijohn9@gmail.com', NULL, CAST(N'2025-11-22T11:54:03.267' AS DateTime), N'11C85921F6992314296B8318E134D5DAA8422C7844C220713F58262AF3E3A0D1', N'C:\Users\fadij\Desktop\Fady John Fayek\graduation pic - Copy.jpg', NULL, NULL, NULL, CAST(25000.00 AS Decimal(10, 2)), N'17500.00', N'7')
+    INSERT [dbo].[Students] ([StudentID], [FirstName], [LastName], [Email], [PhoneNumber], [EnrollmentDate], [Password], [ProfilePicPath], [GPA], [creditHours], [weeks], [Wallet], [AmountToBePaid], [CreditsToBePaid]) VALUES (11, N'Michael', N'Nagi', N'miky@gmail.com', NULL, CAST(N'2025-11-22T12:24:38.533' AS DateTime), N'509FC9730E1D6638077DDBA2E2DF5B804A0560389003387D66902F2051A9918F', N'C:\Users\fadij\Desktop\Fady John Fayek\graduation pic - Copy.jpg', NULL, NULL, NULL, CAST(0.00 AS Decimal(10, 2)), NULL, NULL)
+    INSERT [dbo].[Students] ([StudentID], [FirstName], [LastName], [Email], [PhoneNumber], [EnrollmentDate], [Password], [ProfilePicPath], [GPA], [creditHours], [weeks], [Wallet], [AmountToBePaid], [CreditsToBePaid]) VALUES (12, N'Teststudent', N'Teststudent', N'test@gmail.com', NULL, CAST(N'2025-12-25T23:40:51.810' AS DateTime), N'D3696A22EB252A367CB1B404C069ED17469CDB7B258A519373EC6C7FB411C3DD', NULL, NULL, NULL, NULL, CAST(0.00 AS Decimal(10, 2)), N'15000.00', N'6')
     SET IDENTITY_INSERT [dbo].[Students] OFF
     GO
     SET IDENTITY_INSERT [dbo].[TeacherAssignments] ON
@@ -479,22 +693,22 @@ CREATE TABLE [dbo].[Teachers](
     GO
     SET IDENTITY_INSERT [dbo].[Teachers] ON
 
-    INSERT [dbo].[Teachers] ([TeacherID], [FirstName], [LastName], [Email], [Department], [HireDate], [Password], [ProfilePicPath]) VALUES (1, N'John', N'Smith', N't', N'Computer Science', NULL, N't', N'C:\Users\fadij\Desktop\Fady John Fayek\graduation pic - Copy.jpg')
-    INSERT [dbo].[Teachers] ([TeacherID], [FirstName], [LastName], [Email], [Department], [HireDate], [Password], [ProfilePicPath]) VALUES (2, N'Sarah', N'Connor', N'rr', N'Mathematics', NULL, N'rr', N'C:\Users\fadij\Desktop\Fady John Fayek\cert.png')
-    INSERT [dbo].[Teachers] ([TeacherID], [FirstName], [LastName], [Email], [Department], [HireDate], [Password], [ProfilePicPath]) VALUES (3, N'Teacher1', N'T1', N'tt', N'Mechanical', CAST(N'2025-11-20' AS Date), N'tt', NULL)
+    INSERT [dbo].[Teachers] ([TeacherID], [FirstName], [LastName], [Email], [Department], [HireDate], [Password], [ProfilePicPath]) VALUES (1, N'John', N'Smith', N't', N'Computer Science', NULL, N'3776096E9733584BD622E7E6417B65BA6640F8A8B809F475CD15ED5923CCE3F6', N'C:\Users\fadij\Desktop\Fady John Fayek\graduation pic - Copy.jpg')
+    INSERT [dbo].[Teachers] ([TeacherID], [FirstName], [LastName], [Email], [Department], [HireDate], [Password], [ProfilePicPath]) VALUES (2, N'Sarah', N'Connor', N'rr', N'Mathematics', NULL, N'3315E8C72C781761D77EB58B5FA86DDB6F86976DD6DD76D4A9F77B88E8DF9DB8', N'C:\Users\fadij\Desktop\Fady John Fayek\cert.png')
+    INSERT [dbo].[Teachers] ([TeacherID], [FirstName], [LastName], [Email], [Department], [HireDate], [Password], [ProfilePicPath]) VALUES (3, N'Teacher1', N'T1', N'tt', N'Mechanical', CAST(N'2025-11-20' AS Date), N'91C51161387018BE9D26BC21476FB203C37087B8793D728EF63212CED26A044A', N'')
     SET IDENTITY_INSERT [dbo].[Teachers] OFF
     GO
     SET ANSI_PADDING ON
     GO
-/****** Object:  Index [UQ__Admins__536C85E46CF39788]    Script Date: 09-Dec-25 10:14:24 PM ******/
-ALTER TABLE [dbo].[Admins] ADD UNIQUE NONCLUSTERED
+/****** Object:  Index [UQ_AdminAttributes_Name]    Script Date: 26-Dec-25 2:42:10 AM ******/
+ALTER TABLE [dbo].[AdminAttributes] ADD  CONSTRAINT [UQ_AdminAttributes_Name] UNIQUE NONCLUSTERED
     (
-    [Username] ASC
+    [AttrName] ASC
     )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
     GO
     SET ANSI_PADDING ON
     GO
-/****** Object:  Index [UQ__Courses__FC00E00065FAFEEA]    Script Date: 09-Dec-25 10:14:24 PM ******/
+/****** Object:  Index [UQ__Courses__FC00E00065FAFEEA]    Script Date: 26-Dec-25 2:42:10 AM ******/
 ALTER TABLE [dbo].[Courses] ADD UNIQUE NONCLUSTERED
     (
     [CourseCode] ASC
@@ -502,15 +716,23 @@ ALTER TABLE [dbo].[Courses] ADD UNIQUE NONCLUSTERED
     GO
     SET ANSI_PADDING ON
     GO
-/****** Object:  Index [UQ__Halls__C56C29DE37036951]    Script Date: 09-Dec-25 10:14:24 PM ******/
-ALTER TABLE [dbo].[Halls] ADD UNIQUE NONCLUSTERED
+/****** Object:  Index [UQ_HallAttributes_Name]    Script Date: 26-Dec-25 2:42:10 AM ******/
+ALTER TABLE [dbo].[HallAttributes] ADD  CONSTRAINT [UQ_HallAttributes_Name] UNIQUE NONCLUSTERED
     (
-    [HallName] ASC
+    [AttrName] ASC
     )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
     GO
     SET ANSI_PADDING ON
     GO
-/****** Object:  Index [UQ__Students__A9D105347F1235C1]    Script Date: 09-Dec-25 10:14:24 PM ******/
+/****** Object:  Index [UQ__Parents__A9D1053428F36B2D]    Script Date: 26-Dec-25 2:42:10 AM ******/
+ALTER TABLE [dbo].[Parents] ADD UNIQUE NONCLUSTERED
+    (
+    [Email] ASC
+    )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+    GO
+    SET ANSI_PADDING ON
+    GO
+/****** Object:  Index [UQ__Students__A9D105347F1235C1]    Script Date: 26-Dec-25 2:42:10 AM ******/
 ALTER TABLE [dbo].[Students] ADD UNIQUE NONCLUSTERED
     (
     [Email] ASC
@@ -518,7 +740,7 @@ ALTER TABLE [dbo].[Students] ADD UNIQUE NONCLUSTERED
     GO
     SET ANSI_PADDING ON
     GO
-/****** Object:  Index [UQ__Teachers__A9D10534953CA193]    Script Date: 09-Dec-25 10:14:24 PM ******/
+/****** Object:  Index [UQ__Teachers__A9D10534953CA193]    Script Date: 26-Dec-25 2:42:10 AM ******/
 ALTER TABLE [dbo].[Teachers] ADD UNIQUE NONCLUSTERED
     (
     [Email] ASC
@@ -536,11 +758,9 @@ ALTER TABLE [dbo].[HallIssues] ADD  DEFAULT ('Open') FOR [Status]
     GO
 ALTER TABLE [dbo].[HallIssues] ADD  DEFAULT (getdate()) FOR [ReportedDate]
     GO
-ALTER TABLE [dbo].[Halls] ADD  DEFAULT ((30)) FOR [Capacity]
+ALTER TABLE [dbo].[Materials] ADD  DEFAULT (getdate()) FOR [UploadDate]
     GO
-ALTER TABLE [dbo].[Halls] ADD  DEFAULT ((1)) FOR [IsActive]
-    GO
-ALTER TABLE [dbo].[Halls] ADD  DEFAULT ('Classroom') FOR [HallType]
+ALTER TABLE [dbo].[Messages] ADD  DEFAULT (getdate()) FOR [SentDate]
     GO
 ALTER TABLE [dbo].[Payments] ADD  DEFAULT (getdate()) FOR [PaymentDate]
     GO
@@ -548,36 +768,99 @@ ALTER TABLE [dbo].[Students] ADD  DEFAULT (getdate()) FOR [EnrollmentDate]
     GO
 ALTER TABLE [dbo].[Students] ADD  DEFAULT ((0.00)) FOR [Wallet]
     GO
+ALTER TABLE [dbo].[AdminValues]  WITH CHECK ADD FOREIGN KEY([AdminID])
+    REFERENCES [dbo].[Admins] ([AdminID])
+    ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[AdminValues]  WITH CHECK ADD FOREIGN KEY([AttrID])
+    REFERENCES [dbo].[AdminAttributes] ([AttrID])
+    GO
 ALTER TABLE [dbo].[Courses]  WITH CHECK ADD  CONSTRAINT [FK_Courses_Halls] FOREIGN KEY([HallID])
     REFERENCES [dbo].[Halls] ([HallID])
-    GO
+    ON DELETE SET NULL
+GO
 ALTER TABLE [dbo].[Courses] CHECK CONSTRAINT [FK_Courses_Halls]
     GO
-ALTER TABLE [dbo].[Enrollments]  WITH CHECK ADD FOREIGN KEY([CourseID])
+ALTER TABLE [dbo].[Enrollments]  WITH CHECK ADD  CONSTRAINT [FK_Enrollments_Courses] FOREIGN KEY([CourseID])
     REFERENCES [dbo].[Courses] ([CourseID])
+    ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[Enrollments] CHECK CONSTRAINT [FK_Enrollments_Courses]
     GO
-ALTER TABLE [dbo].[Enrollments]  WITH CHECK ADD FOREIGN KEY([StudentID])
+ALTER TABLE [dbo].[Enrollments]  WITH CHECK ADD  CONSTRAINT [FK_Enrollments_Students] FOREIGN KEY([StudentID])
     REFERENCES [dbo].[Students] ([StudentID])
+    ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[Enrollments] CHECK CONSTRAINT [FK_Enrollments_Students]
     GO
-ALTER TABLE [dbo].[HallBookings]  WITH CHECK ADD FOREIGN KEY([HallID])
+ALTER TABLE [dbo].[HallBookings]  WITH CHECK ADD  CONSTRAINT [FK_HallBookings_Halls] FOREIGN KEY([HallID])
     REFERENCES [dbo].[Halls] ([HallID])
+    ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[HallBookings] CHECK CONSTRAINT [FK_HallBookings_Halls]
     GO
-ALTER TABLE [dbo].[HallBookings]  WITH CHECK ADD FOREIGN KEY([StudentID])
+ALTER TABLE [dbo].[HallBookings]  WITH CHECK ADD  CONSTRAINT [FK_HallBookings_Students] FOREIGN KEY([StudentID])
     REFERENCES [dbo].[Students] ([StudentID])
+    ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[HallBookings] CHECK CONSTRAINT [FK_HallBookings_Students]
     GO
-ALTER TABLE [dbo].[HallIssues]  WITH CHECK ADD FOREIGN KEY([HallID])
+ALTER TABLE [dbo].[HallIssues]  WITH CHECK ADD  CONSTRAINT [FK_HallIssues_Halls] FOREIGN KEY([HallID])
     REFERENCES [dbo].[Halls] ([HallID])
+    ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[HallIssues] CHECK CONSTRAINT [FK_HallIssues_Halls]
     GO
-ALTER TABLE [dbo].[Payments]  WITH CHECK ADD FOREIGN KEY([StudentID])
-    REFERENCES [dbo].[Students] ([StudentID])
+ALTER TABLE [dbo].[HallValues]  WITH CHECK ADD FOREIGN KEY([AttrID])
+    REFERENCES [dbo].[HallAttributes] ([AttrID])
     GO
-ALTER TABLE [dbo].[TeacherAssignments]  WITH CHECK ADD FOREIGN KEY([CourseID])
+ALTER TABLE [dbo].[HallValues]  WITH CHECK ADD FOREIGN KEY([HallID])
+    REFERENCES [dbo].[Halls] ([HallID])
+    ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[Materials]  WITH CHECK ADD  CONSTRAINT [FK_Materials_Courses] FOREIGN KEY([CourseID])
     REFERENCES [dbo].[Courses] ([CourseID])
+    ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[Materials] CHECK CONSTRAINT [FK_Materials_Courses]
     GO
-ALTER TABLE [dbo].[TeacherAssignments]  WITH CHECK ADD FOREIGN KEY([TeacherID])
+ALTER TABLE [dbo].[Messages]  WITH CHECK ADD  CONSTRAINT [FK_Messages_Parents] FOREIGN KEY([ParentID])
+    REFERENCES [dbo].[Parents] ([ParentID])
+    ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[Messages] CHECK CONSTRAINT [FK_Messages_Parents]
+    GO
+ALTER TABLE [dbo].[Messages]  WITH CHECK ADD  CONSTRAINT [FK_Messages_Teachers] FOREIGN KEY([TeacherID])
     REFERENCES [dbo].[Teachers] ([TeacherID])
+    ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[Messages] CHECK CONSTRAINT [FK_Messages_Teachers]
     GO
-/****** Object:  Trigger [dbo].[trg_AutoCalculateGPA]    Script Date: 09-Dec-25 10:14:24 PM ******/
+ALTER TABLE [dbo].[Parents]  WITH CHECK ADD  CONSTRAINT [FK_Parents_Students] FOREIGN KEY([StudentID])
+    REFERENCES [dbo].[Students] ([StudentID])
+    ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[Parents] CHECK CONSTRAINT [FK_Parents_Students]
+    GO
+ALTER TABLE [dbo].[Payments]  WITH CHECK ADD  CONSTRAINT [FK_Payments_Students] FOREIGN KEY([StudentID])
+    REFERENCES [dbo].[Students] ([StudentID])
+    ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[Payments] CHECK CONSTRAINT [FK_Payments_Students]
+    GO
+ALTER TABLE [dbo].[TeacherAssignments]  WITH CHECK ADD  CONSTRAINT [FK_TeacherAssignments_Courses] FOREIGN KEY([CourseID])
+    REFERENCES [dbo].[Courses] ([CourseID])
+    ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[TeacherAssignments] CHECK CONSTRAINT [FK_TeacherAssignments_Courses]
+    GO
+ALTER TABLE [dbo].[TeacherAssignments]  WITH CHECK ADD  CONSTRAINT [FK_TeacherAssignments_Teachers] FOREIGN KEY([TeacherID])
+    REFERENCES [dbo].[Teachers] ([TeacherID])
+    ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[TeacherAssignments] CHECK CONSTRAINT [FK_TeacherAssignments_Teachers]
+    GO
+/****** Object:  Trigger [dbo].[trg_AutoCalculateGPA]    Script Date: 26-Dec-25 2:42:10 AM ******/
     SET ANSI_NULLS ON
     GO
     SET QUOTED_IDENTIFIER ON
@@ -617,7 +900,7 @@ END;
 GO
 ALTER TABLE [dbo].[Enrollments] ENABLE TRIGGER [trg_AutoCalculateGPA]
     GO
-/****** Object:  Trigger [dbo].[trg_AutoUpdateFeesOnEnrollment]    Script Date: 09-Dec-25 10:14:24 PM ******/
+/****** Object:  Trigger [dbo].[trg_AutoUpdateFeesOnEnrollment]    Script Date: 26-Dec-25 2:42:11 AM ******/
     SET ANSI_NULLS ON
     GO
     SET QUOTED_IDENTIFIER ON
@@ -666,60 +949,4 @@ ALTER TABLE [dbo].[Enrollments] ENABLE TRIGGER [trg_AutoUpdateFeesOnEnrollment]
     USE [master]
     GO
 ALTER DATABASE [SIS] SET  READ_WRITE
-GO
-
-
-USE SIS;
-GO
-
--- Increase column size to accommodate SHA-256 hash (64 chars)
-ALTER TABLE Students ALTER COLUMN Password NVARCHAR(64);
-ALTER TABLE Teachers ALTER COLUMN Password NVARCHAR(64);
--- Admin table already has NVARCHAR(255) for PasswordHash, so it is fine.
-
-
-USE [SIS]
-GO
-
-CREATE TABLE [dbo].[Materials](
-    [MaterialID] [int] IDENTITY(1,1) NOT NULL,
-    [CourseID] [int] NOT NULL,
-    [FileName] [nvarchar](255) NOT NULL,
-    [FilePath] [nvarchar](500) NOT NULL,
-    [UploadDate] [datetime] DEFAULT GETDATE(),
-    PRIMARY KEY CLUSTERED ([MaterialID] ASC),
-    FOREIGN KEY ([CourseID]) REFERENCES [dbo].[Courses] ([CourseID])
-    );
-GO
-
-
-USE [SIS]
-GO
-
--- 1. Create Parents Table (Links to a Student)
-CREATE TABLE Parents (
-                         ParentID INT PRIMARY KEY IDENTITY(1,1),
-                         FirstName NVARCHAR(50) NOT NULL,
-                         LastName NVARCHAR(50) NOT NULL,
-                         Email NVARCHAR(100) UNIQUE NOT NULL,
-                         Password NVARCHAR(255) NOT NULL,
-                         StudentID INT NOT NULL, -- The child
-                         FOREIGN KEY (StudentID) REFERENCES Students(StudentID)
-);
-
--- 2. Create Messages Table (Conversation between Parent and Teacher)
-CREATE TABLE Messages (
-                          MessageID INT PRIMARY KEY IDENTITY(1,1),
-                          ParentID INT NOT NULL,
-                          TeacherID INT NOT NULL,
-                          SenderType NVARCHAR(10) NOT NULL, -- 'Parent' or 'Teacher'
-                          MessageText NVARCHAR(MAX),
-                          SentDate DATETIME DEFAULT GETDATE(),
-                          FOREIGN KEY (ParentID) REFERENCES Parents(ParentID),
-                          FOREIGN KEY (TeacherID) REFERENCES Teachers(TeacherID)
-);
-
--- 3. Insert Dummy Parent (Linked to StudentID 1 'Fady John')
-INSERT INTO Parents (FirstName, LastName, Email, Password, StudentID)
-VALUES ('George', 'John', 'p', 'p', 1);
 GO

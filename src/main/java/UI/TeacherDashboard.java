@@ -500,11 +500,18 @@ public class TeacherDashboard {
         TextField deptField = new TextField(teacher.getPassword());
         deptField.setMaxWidth(400);
 
+
+        Label lblOldP = new Label("Old Password:");
+        PasswordField oldPassField = new PasswordField(); oldPassField.setMaxWidth(400);
+
+        Label lblNewP = new Label("New Password:");
+        PasswordField newPassField = new PasswordField(); newPassField.setMaxWidth(400);
+
         // Password
-        Label lblP = new Label("Password:");
-        PasswordField passField = new PasswordField();
-        passField.setText(teacher.getDepartment()); // Pre-fill
-        passField.setMaxWidth(400);
+//        Label lblP = new Label("New Password:");
+//        PasswordField passField = new PasswordField();
+//        //passField.setText(teacher.getPassword()); // Pre-fill
+//        passField.setMaxWidth(400);
 
         // --- 3. Save Button ---
         Button saveBtn = new Button("Save Changes");
@@ -515,24 +522,33 @@ public class TeacherDashboard {
 
         saveBtn.setOnAction(e -> {
             TeacherDAO dao = new TeacherDAO();
+            String newPass = newPassField.getText();
+            String oldPass = oldPassField.getText();
 
-            // Pass all fields to the DAO (Ensure this matches DAO parameter order!)
-            boolean success = dao.updateProfile(
-                    teacher.getTeacherId(),
-                    fNameField.getText(),
-                    lNameField.getText(),
-                    emailField.getText(),
-                    passField.getText(),
-                    deptField.getText(),
-                    newImagePath.toString()
-            );
+            if (!newPass.isEmpty()) {
+                if (oldPass.isEmpty()) {
+                    new Alert(Alert.AlertType.ERROR, "Enter Old Password to confirm.").show(); return;
+                }
+                if (!dao.verifyPassword(teacher.getTeacherId(), oldPass)) {
+                    new Alert(Alert.AlertType.ERROR, "Incorrect Old Password.").show(); return;
+                }
+                // Optional: Validate strength
+                if (!Model.Register.isValidPassword(newPass)) {
+                    new Alert(Alert.AlertType.ERROR, "New Password is too weak. but we will continue for ease of use now").show();
+                    //return;
+                }
+            }
+            if(newPass.isEmpty()){
+                new Alert(Alert.AlertType.ERROR, "Enter New Password.").show(); return;
+            }
+
+            boolean success = dao.updateProfile(teacher.getTeacherId(), fNameField.getText(), lNameField.getText(), emailField.getText(), newPass, deptField.getText(), newImagePath.toString());
 
             if (success) {
-                statusLabel.setText("Saved! Please Logout to see changes.");
-                statusLabel.setTextFill(Color.GREEN);
+                new Alert(Alert.AlertType.INFORMATION, "Saved!").show();
+                oldPassField.clear(); newPassField.clear();
             } else {
-                statusLabel.setText("Error updating profile.");
-                statusLabel.setTextFill(Color.RED);
+                new Alert(Alert.AlertType.ERROR, "Error.").show();
             }
         });
 
@@ -544,7 +560,8 @@ public class TeacherDashboard {
                 lblL, lNameField,
                 lblE, emailField,
                 lblD, deptField, // Added Dept
-                lblP, passField,
+                lblOldP, oldPassField,
+                lblNewP,newPassField,
                 new Region(), // Spacer
                 saveBtn,
                 statusLabel

@@ -266,19 +266,160 @@ public class AdminDAO {
         }
     }
 
-    public boolean updateProfile(int adminId, String username, String fullName, String password, String picPath) {
-        String sql = "UPDATE Admins SET Username = ?, FullName = ?, PasswordHash = CONVERT(NVARCHAR(64), HASHBYTES('SHA2_256', ?), 2), ProfilePicPath = ? WHERE AdminID = ?";
+    public boolean verifyPassword(int adminId, String oldPassword) {
+        String sql = "SELECT 1 FROM Admins WHERE AdminID = ? AND PasswordHash = CONVERT(NVARCHAR(64), HASHBYTES('SHA2_256', ?), 2)";
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, adminId);
+            pstmt.setString(2, oldPassword);
+            ResultSet rs = pstmt.executeQuery();
+            return rs.next(); // Returns true if match found
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    // 2. UPDATED: Update Profile (Conditional Password Logic)
+    public boolean updateProfile(int adminId, String username, String fullName, String newPassword, String picPath) {
+        // SQL Logic: If 'newPassword' param is empty, keep existing 'PasswordHash'. Otherwise, hash and update it.
+        String sql = "UPDATE Admins SET Username = ?, FullName = ?, " +
+                "PasswordHash = CASE WHEN ? = '' THEN PasswordHash ELSE CONVERT(NVARCHAR(64), HASHBYTES('SHA2_256', ?), 2) END, " +
+                "ProfilePicPath = ? WHERE AdminID = ?";
+
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
             pstmt.setString(1, username);
             pstmt.setString(2, fullName);
-            pstmt.setString(3, password);
-            pstmt.setString(4, picPath);
-            pstmt.setInt(5, adminId);
+            pstmt.setString(3, newPassword); // Condition check
+            pstmt.setString(4, newPassword); // Value to hash (if not empty)
+            pstmt.setString(5, picPath);
+            pstmt.setInt(6, adminId);
+
             return pstmt.executeUpdate() > 0;
         } catch (SQLException e) {
             e.printStackTrace();
             return false;
         }
     }
+
+
+    public boolean registerStudentAndParent(String sFirst, String sLast, String sEmail, String sPass,
+                                            String pFirst, String pLast, String pEmail, String pPass) {
+        Connection conn = null;
+        PreparedStatement stmtStudent = null;
+        PreparedStatement stmtParent = null;
+        ResultSet generatedKeys = null;
+
+        // SQL to insert Student and hash password
+        String sqlStudent = "INSERT INTO Students (FirstName, LastName, Email, Password, EnrollmentDate) " +
+                "VALUES (?, ?, ?, CONVERT(NVARCHAR(64), HASHBYTES('SHA2_256', ?), 2), GETDATE())";
+
+        // SQL to insert Parent linked to the new StudentID
+        String sqlParent = "INSERT INTO Parents (FirstName, LastName, Email, Password, StudentID) " +
+                "VALUES (?, ?, ?, CONVERT(NVARCHAR(64), HASHBYTES('SHA2_256', ?), 2), ?)";
+
+        try {
+            conn = DatabaseManager.getConnection();
+            conn.setAutoCommit(false); // START TRANSACTION
+
+            // 1. Insert Student
+            stmtStudent = conn.prepareStatement(sqlStudent, java.sql.Statement.RETURN_GENERATED_KEYS);
+            stmtStudent.setString(1, sFirst);
+            stmtStudent.setString(2, sLast);
+            stmtStudent.setString(3, sEmail);
+            stmtStudent.setString(4, sPass);
+
+            int affectedRows = stmtStudent.executeUpdate();
+            if (affectedRows == 0) {
+                throw new SQLException("Creating student failed, no rows affected.");
+            }
+
+            // 2. Retrieve the generated StudentID
+            generatedKeys = stmtStudent.getGeneratedKeys();
+            int studentId;
+            if (generatedKeys.next()) {
+                studentId = generatedKeys.getInt(1);
+            } else {
+                throw new SQLException("Creating student failed, no ID obtained.");
+            }
+
+            // 3. Insert Parent linked to StudentID
+            stmtParent = conn.prepareStatement(sqlParent);
+            stmtParent.setString(1, pFirst);
+            stmtParent.setString(2, pLast);
+            stmtParent.setString(3, pEmail);
+            stmtParent.setString(4, pPass);
+            stmtParent.setInt(5, studentId); // Link to child
+
+            stmtParent.executeUpdate();
+
+            conn.commit(); // COMMIT TRANSACTION
+            return true;
+
+        } catch (SQLException e) {
+            // Rollback if any error occurs
+            if (conn != null) {
+                try { conn.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
+            }
+            System.err.println("Transaction Failed: " + e.getMessage());
+            return false;
+        } finally {
+            // Close resources carefully
+            try { if (generatedKeys != null) generatedKeys.close(); } catch (SQLException e) { e.printStackTrace(); }
+            try { if (stmtStudent != null) stmtStudent.close(); } catch (SQLException e) { e.printStackTrace(); }
+            try { if (stmtParent != null) stmtParent.close(); } catch (SQLException e) { e.printStackTrace(); }
+            try { if (conn != null) conn.close(); } catch (SQLException e) { e.printStackTrace(); }
+        }
+    }
+
+    public List<Model.Student> getAllStudents() {
+        List<Model.Student> list = new ArrayList<>();
+        // Select all columns to populate the Student model fully
+        String sql = "SELECT * FROM Students";
+
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql);
+             ResultSet rs = pstmt.executeQuery()) {
+
+            while (rs.next()) {
+                list.add(new Model.Student(
+                        rs.getInt("StudentID"),
+                        rs.getString("FirstName"),
+                        rs.getString("LastName"),
+                        rs.getString("Email"),
+                        rs.getString("ProfilePicPath"),
+                        rs.getDouble("GPA"),
+                        rs.getInt("creditHours"),
+                        rs.getInt("weeks"),
+                        rs.getString("Password"),
+                        rs.getDouble("Wallet"),
+                        rs.getDouble("AmountToBePaid"),
+                        rs.getInt("CreditsToBePaid")
+                ));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    // 2. Add Funds to Student Wallet
+    public boolean addStudentFunds(int studentId, double amount) {
+        String sql = "UPDATE Students SET Wallet = Wallet + ? WHERE StudentID = ?";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setDouble(1, amount);
+            pstmt.setInt(2, studentId);
+
+            return pstmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            System.err.println("Add Funds Error: " + e.getMessage());
+            return false;
+        }
+    }
+
+
 }

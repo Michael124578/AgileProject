@@ -950,3 +950,4 @@ ALTER TABLE [dbo].[Enrollments] ENABLE TRIGGER [trg_AutoUpdateFeesOnEnrollment]
     GO
 ALTER DATABASE [SIS] SET  READ_WRITE
 GO
+

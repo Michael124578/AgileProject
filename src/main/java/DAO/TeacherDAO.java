@@ -21,13 +21,14 @@ public class TeacherDAO {
 
             try (ResultSet rs = pstmt.executeQuery()) {
                 if (rs.next()) {
+                    // FIX: Swapped Department and Password to match Model constructor order
                     return new Teacher(
                             rs.getInt("TeacherID"),
                             rs.getString("FirstName"),
                             rs.getString("LastName"),
                             rs.getString("Email"),
-                            rs.getString("Department"),
-                            rs.getString("Password"),
+                            rs.getString("Password"),   // <--- Correct Order
+                            rs.getString("Department"), // <--- Correct Order
                             rs.getString("ProfilePicPath")
                     );
                 }
@@ -67,14 +68,15 @@ public class TeacherDAO {
     }
 
     // 3. update profile picture
-    public boolean updateProfilePic(int studentId, String imagePath) {
-        String sql = "UPDATE Students SET ProfilePicPath = ? WHERE StudentID = ?";
+    public boolean updateProfilePic(int teacherId, String imagePath) {
+        // FIX: Changed table from Students to Teachers, and parameter name for clarity
+        String sql = "UPDATE Teachers SET ProfilePicPath = ? WHERE TeacherID = ?";
 
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
             pstmt.setString(1, imagePath);
-            pstmt.setInt(2, studentId);
+            pstmt.setInt(2, teacherId); // FIX: Use teacherId
 
             int rows = pstmt.executeUpdate();
             if(rows > 0) {
@@ -85,6 +87,31 @@ public class TeacherDAO {
             System.err.println("Error updating pic: " + e.getMessage());
         }
         return false;
+    }
+
+    public Teacher getTeacherById(int teacherId) {
+        String sql = "SELECT * FROM Teachers WHERE TeacherID = ?";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setInt(1, teacherId);
+            ResultSet rs = pstmt.executeQuery();
+
+            if (rs.next()) {
+                return new Teacher(
+                        rs.getInt("TeacherID"),
+                        rs.getString("FirstName"),
+                        rs.getString("LastName"),
+                        rs.getString("Email"),
+                        rs.getString("Password"),
+                        rs.getString("Department"),
+                        rs.getString("ProfilePicPath")
+                );
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
     public boolean verifyPassword(int teacherId, String oldPassword) {

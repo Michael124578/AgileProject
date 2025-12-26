@@ -91,46 +91,49 @@ public class AdminDashboard {
         Button assignBtn = createNavButton("Assign Teachers", false);
         Button issueBtn = createNavButton("Reported Issues", false); // NEW BUTTON
         Button regBtn = createNavButton("Register Student/Parent", false);
-        Button financeBtn = createNavButton("Student Finances", false);
+        Button financeBtn = createNavButton("Student Finances/Deletion", false);
         Button profileBtn = createNavButton("My Profile", false);
         Button logoutBtn = createNavButton("Logout", false);
 
         // Actions
         teachBtn.setOnAction(e -> {
             root.setCenter(createTeachersView(root));
-            setActive(teachBtn, hallBtn, courseBtn, assignBtn, profileBtn, logoutBtn);
+            setActive(teachBtn, hallBtn, courseBtn, assignBtn, issueBtn, regBtn, financeBtn, profileBtn, logoutBtn);
         });
 
         hallBtn.setOnAction(e -> {
-            root.setCenter(createHallsView(root)); // NEW ACTION
-            setActive(hallBtn, teachBtn, courseBtn, assignBtn, profileBtn, logoutBtn);
+            root.setCenter(createHallsView(root));
+            setActive(hallBtn, teachBtn, courseBtn, assignBtn, issueBtn, regBtn, financeBtn, profileBtn, logoutBtn);
         });
 
         courseBtn.setOnAction(e -> {
             root.setCenter(createCoursesView(root));
-            setActive(courseBtn, teachBtn, hallBtn, assignBtn, profileBtn, logoutBtn);
+            setActive(courseBtn, teachBtn, hallBtn, assignBtn, issueBtn, regBtn, financeBtn, profileBtn, logoutBtn);
         });
 
         assignBtn.setOnAction(e -> {
             root.setCenter(createAssignmentView(root));
-            setActive(assignBtn, teachBtn, hallBtn, courseBtn, profileBtn, logoutBtn);
+            setActive(assignBtn, teachBtn, hallBtn, courseBtn, issueBtn, regBtn, financeBtn, profileBtn, logoutBtn);
+        });
+
+        issueBtn.setOnAction(e -> {
+            root.setCenter(createIssuesView(root));
+            setActive(issueBtn, teachBtn, hallBtn, courseBtn, assignBtn, regBtn, financeBtn, profileBtn, logoutBtn);
+        });
+
+        regBtn.setOnAction(e -> {
+            root.setCenter(createStudentParentRegisterView(root));
+            setActive(regBtn, teachBtn, hallBtn, courseBtn, assignBtn, issueBtn, financeBtn, profileBtn, logoutBtn);
+        });
+
+        financeBtn.setOnAction(e -> {
+            root.setCenter(createFinancesView(root));
+            setActive(financeBtn, teachBtn, hallBtn, courseBtn, assignBtn, issueBtn, regBtn, profileBtn, logoutBtn);
         });
 
         profileBtn.setOnAction(e -> {
             root.setCenter(createProfileView(admin, root));
-            setActive(profileBtn, teachBtn, hallBtn, courseBtn, assignBtn, logoutBtn);
-        });
-        issueBtn.setOnAction(e -> {
-            root.setCenter(createIssuesView(root));
-            setActive(issueBtn, teachBtn, hallBtn, courseBtn, assignBtn, profileBtn, logoutBtn);
-        });
-        regBtn.setOnAction(e -> {
-            root.setCenter(createStudentParentRegisterView(root));
-            setActive(regBtn, teachBtn, hallBtn, courseBtn, assignBtn, issueBtn, profileBtn, logoutBtn);
-        });
-        financeBtn.setOnAction(e -> {
-            root.setCenter(createFinancesView(root));
-            setActive(financeBtn, teachBtn, hallBtn, courseBtn, assignBtn, issueBtn, regBtn, profileBtn, logoutBtn);
+            setActive(profileBtn, teachBtn, hallBtn, courseBtn, assignBtn, issueBtn, regBtn, financeBtn, logoutBtn);
         });
 
         logoutBtn.setOnAction(e -> {
@@ -521,10 +524,12 @@ public class AdminDashboard {
         Label lblOldP = new Label("Old Password (Required if changing password):");
         PasswordField oldPassField = new PasswordField();
         oldPassField.setMaxWidth(400);
+        oldPassField.setPromptText("Enter Old Password");
 
         Label lblNewP = new Label("New Password (Leave empty to keep current):");
         PasswordField newPassField = new PasswordField();
         newPassField.setMaxWidth(400);
+        newPassField.setPromptText("Enter New Password");
 
 //        Label lblP = new Label("New Password:");
 //        PasswordField passField = new PasswordField();
@@ -573,7 +578,19 @@ public class AdminDashboard {
             );
 
             if (success) {
-                new Alert(Alert.AlertType.INFORMATION, "Profile Updated Successfully!").show();
+                // 1. Alert and Wait
+                Alert alert = new Alert(Alert.AlertType.INFORMATION, "Profile Updated!");
+                alert.show();
+
+                // 2. Fetch Updated Admin Data
+                Admin updatedAdmin = dao.getAdminById(admin.getAdminId());
+
+                // 3. Reload Dashboard
+                if (updatedAdmin != null) {
+                    Stage currentStage = (Stage) saveBtn.getScene().getWindow();
+                    new AdminDashboard().show(currentStage, updatedAdmin);
+                }
+
                 oldPassField.clear();
                 newPassField.clear();
             } else {
@@ -881,8 +898,41 @@ public class AdminDashboard {
                 setGraphic(empty ? null : btn);
             }
         });
+        // ---------------------------------------------------------
+        // 6. NEW DELETE COLUMN
+        // ---------------------------------------------------------
+        TableColumn<Student, Void> delCol = new TableColumn<>("Delete");
+        delCol.setCellFactory(param -> new TableCell<>() {
+            private final Button btn = new Button("X");
+            {
+                btn.setStyle("-fx-background-color: #e74c3c; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
+                btn.setOnAction(e -> {
+                    Student s = getTableView().getItems().get(getIndex());
 
-        table.getColumns().addAll(idCol, nameCol, walletCol, debtCol, statusCol, actionCol);
+                    // Confirm Deletion
+                    Alert alert = new Alert(Alert.AlertType.CONFIRMATION,
+                            "Are you sure you want to delete student: " + s.getFirstName() + "?",
+                            ButtonType.YES, ButtonType.NO);
+                    alert.showAndWait().ifPresent(response -> {
+                        if (response == ButtonType.YES) {
+                            AdminDAO dao = new AdminDAO();
+                            if (dao.deleteStudent(s.getStudentId())) {
+                                // Refresh the view on success
+                                root.setCenter(createFinancesView(root));
+                            } else {
+                                new Alert(Alert.AlertType.ERROR, "Failed to delete student.").show();
+                            }
+                        }
+                    });
+                });
+            }
+            @Override protected void updateItem(Void item, boolean empty) {
+                super.updateItem(item, empty);
+                setGraphic(empty ? null : btn);
+            }
+        });
+
+        table.getColumns().addAll(idCol, nameCol, walletCol, debtCol, statusCol, actionCol,delCol);
 
         // Load Data
         AdminDAO dao = new AdminDAO();

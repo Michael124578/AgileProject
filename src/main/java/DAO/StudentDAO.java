@@ -463,7 +463,7 @@ public class StudentDAO {
     // 1. Get All Halls (For the dropdown)
     public List<Hall> getAllHalls() {
         List<Hall> list = new ArrayList<>();
-        String sql = "SELECT * FROM Halls WHERE IsActive = 1";
+        String sql = "SELECT * FROM vw_Halls WHERE IsActive = 1";
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql);
              ResultSet rs = pstmt.executeQuery()) {
@@ -582,7 +582,7 @@ public class StudentDAO {
         List<HallBooking> list = new ArrayList<>();
         String sql = "SELECT B.BookingID, B.HallID, H.HallName, B.BookingDate, B.StartTime, B.EndTime, B.Purpose, B.Status " +
                 "FROM HallBookings B " +
-                "JOIN Halls H ON B.HallID = H.HallID " +
+                "JOIN vw_Halls H ON B.HallID = H.HallID " +
                 "WHERE B.StudentID = ? " +
                 "ORDER BY B.BookingDate DESC";
 

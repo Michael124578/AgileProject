@@ -140,21 +140,21 @@ public class StudentDashboard {
         // 2. Dashboard Action (Switch View)
         dashBtn.setOnAction(e -> {
             root.setCenter(createMainContent(student, root));
-            setActive(dashBtn, profileBtn, logoutBtn);
+            setActive(dashBtn,lmsBtn ,transBtn , bookBtn,hallInfoBtn,profileBtn, logoutBtn);
         });
         lmsBtn.setOnAction(e -> {
             root.setCenter(new LMSStudentView().createView(student));
-            setActive(lmsBtn, dashBtn, bookBtn, hallInfoBtn, profileBtn, logoutBtn);
+            setActive(lmsBtn ,dashBtn,transBtn , bookBtn,hallInfoBtn,profileBtn, logoutBtn);
         });
 
         // 3. Profile Action (Switch View)
         profileBtn.setOnAction(e -> {
             root.setCenter(createProfileView(student)); // Switch content
-            setActive(profileBtn, dashBtn, logoutBtn);  // Update visual style
+            setActive(profileBtn,dashBtn,lmsBtn ,transBtn , bookBtn,hallInfoBtn, logoutBtn);  // Update visual style
         });
         transBtn.setOnAction(e -> {
             root.setCenter(createTranscriptView(student));
-            setActive(transBtn, dashBtn, bookBtn, hallInfoBtn, lmsBtn, profileBtn, logoutBtn);
+            setActive(transBtn ,dashBtn,lmsBtn , bookBtn,hallInfoBtn,profileBtn, logoutBtn);
         });
 
         // 4. Logout Action
@@ -171,11 +171,11 @@ public class StudentDashboard {
         });
         bookBtn.setOnAction(e -> {
             root.setCenter(createBookingView(student, root));
-            setActive(bookBtn, dashBtn, profileBtn, logoutBtn);
+            setActive(bookBtn,logoutBtn,dashBtn,lmsBtn ,transBtn , hallInfoBtn,profileBtn);
         });
         hallInfoBtn.setOnAction(e -> {
             root.setCenter(createHallInfoView(student)); // Call the new view method
-            setActive(hallInfoBtn, dashBtn, bookBtn, profileBtn, logoutBtn);
+            setActive(hallInfoBtn,dashBtn,lmsBtn ,transBtn , bookBtn,profileBtn, logoutBtn);
         });
 
         navMenu.getChildren().addAll(dashBtn,lmsBtn ,transBtn , bookBtn,hallInfoBtn,profileBtn, logoutBtn );
@@ -455,9 +455,11 @@ public class StudentDashboard {
 
         Label lblOldP = new Label("Old Password:");
         PasswordField oldPassField = new PasswordField(); oldPassField.setMaxWidth(400);
+        oldPassField.setPromptText("Enter Old Password");
 
         Label lblNewP = new Label("New Password:");
         PasswordField newPassField = new PasswordField(); newPassField.setMaxWidth(400);
+        newPassField.setPromptText("Enter New Password");
 
 
 //        // Password (NEW)
@@ -495,10 +497,25 @@ public class StudentDashboard {
                 new Alert(Alert.AlertType.ERROR, "Enter New Password.").show(); return;
             }
 
+            boolean success = dao.updateStudentProfile(student.getStudentId(), fNameField.getText(), lNameField.getText(), emailField.getText(), newPass, newImagePath.toString());
             // Update
-            if(dao.updateStudentProfile(student.getStudentId(), fNameField.getText(), lNameField.getText(), emailField.getText(), newPass, newImagePath.toString())) {
-                new Alert(Alert.AlertType.INFORMATION, "Saved!").show();
-                oldPassField.clear(); newPassField.clear();
+            if(success) {
+                // 1. Alert User & Wait
+                Alert alert = new Alert(Alert.AlertType.INFORMATION, "Profile Saved!");
+                alert.show();
+
+                // 2. Fetch Fresh Data from Database
+                Student updatedStudent = dao.getStudentById(student.getStudentId());
+
+                // 3. Reload Dashboard
+                if (updatedStudent != null) {
+                    Stage currentStage = (Stage) saveBtn.getScene().getWindow();
+                    new StudentDashboard().show(currentStage, updatedStudent);
+                }
+
+                // Clear fields (not strictly necessary since we refresh, but good practice)
+                oldPassField.clear();
+                newPassField.clear();
             } else {
                 new Alert(Alert.AlertType.ERROR, "Error updating profile.").show();
             }

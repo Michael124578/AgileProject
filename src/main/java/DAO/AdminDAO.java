@@ -58,6 +58,27 @@ public class AdminDAO {
         return list;
     }
 
+    public Admin getAdminById(int adminId) {
+        String sql = "SELECT AdminID, Username, FullName, PasswordHash, ProfilePicPath FROM vw_Admins WHERE AdminID = ?";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, adminId);
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                return new Admin(
+                        rs.getInt("AdminID"),
+                        rs.getString("Username"),
+                        rs.getString("FullName"),
+                        rs.getString("PasswordHash"),
+                        rs.getString("ProfilePicPath")
+                );
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
     public boolean addTeacher(String fName, String lName, String email, String dept, String password) {
         String sql = "INSERT INTO Teachers (FirstName, LastName, Email, Department, Password, HireDate) " +
                 "VALUES (?, ?, ?, ?, CONVERT(NVARCHAR(64), HASHBYTES('SHA2_256', ?), 2), GETDATE())";
@@ -487,5 +508,17 @@ public class AdminDAO {
         }
     }
 
-
+    public boolean deleteStudent(int studentId) {
+        // Note: If your database schema enforces Foreign Keys (like with Parents) without ON DELETE CASCADE,
+        // you might need to delete the related Parent record first.
+        String sql = "DELETE FROM Students WHERE StudentID = ?";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, studentId);
+            return pstmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
 }

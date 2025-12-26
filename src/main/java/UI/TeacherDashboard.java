@@ -1,8 +1,6 @@
 package UI;
 
-import DAO.ParentDAO;
-import DAO.StudentDAO;
-import DAO.TeacherDAO;
+import DAO.*;
 import Model.*;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -16,7 +14,6 @@ import javafx.scene.shape.Circle;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
-
 import java.io.InputStream;
 import java.util.List;
 import java.util.Optional;
@@ -83,7 +80,7 @@ public class TeacherDashboard {
         nameLabel.setTextFill(Color.WHITE);
         nameLabel.setFont(Font.font("Segoe UI", FontWeight.BOLD, 16));
 
-        Label deptLabel = new Label(teacher.getPassword());
+        Label deptLabel = new Label(teacher.getDepartment()); // Use getDepartment() if available, otherwise keep existing
         deptLabel.setTextFill(Color.LIGHTGRAY);
 
         // C. Menu Buttons
@@ -92,32 +89,33 @@ public class TeacherDashboard {
         Button scheduleBtn = createNavButton("My Schedule", false);
         Button lmsBtn = createNavButton("LMS ->", false);
         Button parentmsgBtn = createNavButton("Parent Messages", false);
-        Button profileBtn = createNavButton("My Profile", false); // NEW
+        Button profileBtn = createNavButton("My Profile", false);
         Button logoutBtn = createNavButton("Logout", false);
 
         // Actions
         dashBtn.setOnAction(e -> {
             root.setCenter(createMainContent(teacher, root));
-            setActive(dashBtn, profileBtn, logoutBtn);
-        });
-
-        parentmsgBtn.setOnAction(e -> {
-            root.setCenter(createParentMessagesView(teacher));
-            setActive(parentmsgBtn, dashBtn, scheduleBtn, profileBtn, logoutBtn);
+            setActive(dashBtn, scheduleBtn, lmsBtn, parentmsgBtn, profileBtn, logoutBtn);
         });
 
         scheduleBtn.setOnAction(e -> {
             root.setCenter(createScheduleView(teacher, root));
-            setActive(scheduleBtn, dashBtn, profileBtn, logoutBtn);
+            setActive(scheduleBtn, dashBtn, lmsBtn, parentmsgBtn, profileBtn, logoutBtn);
         });
+
         lmsBtn.setOnAction(e -> {
             root.setCenter(new LMSTeacherView().createView(teacher));
-            setActive(lmsBtn, dashBtn, scheduleBtn, profileBtn, logoutBtn);
+            setActive(lmsBtn, dashBtn, scheduleBtn, parentmsgBtn, profileBtn, logoutBtn);
+        });
+
+        parentmsgBtn.setOnAction(e -> {
+            root.setCenter(createParentMessagesView(teacher));
+            setActive(parentmsgBtn, dashBtn, scheduleBtn, lmsBtn, profileBtn, logoutBtn);
         });
 
         profileBtn.setOnAction(e -> {
-            root.setCenter(createProfileView(teacher, root)); // NEW View
-            setActive(profileBtn, dashBtn, logoutBtn);
+            root.setCenter(createProfileView(teacher, root));
+            setActive(profileBtn, dashBtn, scheduleBtn, lmsBtn, parentmsgBtn, logoutBtn);
         });
 
         logoutBtn.setOnAction(e -> {
@@ -126,7 +124,7 @@ public class TeacherDashboard {
             try { new LoginScreen().show(new Stage()); } catch (Exception ex) {}
         });
 
-        navMenu.getChildren().addAll(dashBtn,scheduleBtn,lmsBtn,parentmsgBtn, profileBtn, logoutBtn);
+        navMenu.getChildren().addAll(dashBtn, scheduleBtn, lmsBtn, parentmsgBtn, profileBtn, logoutBtn);
         sidebar.getChildren().addAll(profilePic, nameLabel, deptLabel, new Region(), navMenu);
         return sidebar;
     }
@@ -497,15 +495,17 @@ public class TeacherDashboard {
 
         // Department (Teacher Specific)
         Label lblD = new Label("Department:");
-        TextField deptField = new TextField(teacher.getPassword());
+        TextField deptField = new TextField(teacher.getDepartment());
         deptField.setMaxWidth(400);
 
 
         Label lblOldP = new Label("Old Password:");
         PasswordField oldPassField = new PasswordField(); oldPassField.setMaxWidth(400);
+        oldPassField.setPromptText("Enter Old Password");
 
         Label lblNewP = new Label("New Password:");
         PasswordField newPassField = new PasswordField(); newPassField.setMaxWidth(400);
+        newPassField.setPromptText("Enter New Password");
 
         // Password
 //        Label lblP = new Label("New Password:");
@@ -545,10 +545,21 @@ public class TeacherDashboard {
             boolean success = dao.updateProfile(teacher.getTeacherId(), fNameField.getText(), lNameField.getText(), emailField.getText(), newPass, deptField.getText(), newImagePath.toString());
 
             if (success) {
-                new Alert(Alert.AlertType.INFORMATION, "Saved!").show();
-                oldPassField.clear(); newPassField.clear();
+                // 1. Show Success Message and WAIT for user to click OK
+                Alert alert = new Alert(Alert.AlertType.INFORMATION, "Profile Saved!");
+                alert.show();
+
+                // 2. Fetch the UPDATED Teacher Object from DB
+                Teacher updatedTeacher = dao.getTeacherById(teacher.getTeacherId());
+
+                // 3. Reload the Dashboard with the new data
+                if (updatedTeacher != null) {
+                    Stage currentStage = (Stage) saveBtn.getScene().getWindow();
+                    new TeacherDashboard().show(currentStage, updatedTeacher);
+                }
+
             } else {
-                new Alert(Alert.AlertType.ERROR, "Error.").show();
+                new Alert(Alert.AlertType.ERROR, "Update Failed.").show();
             }
         });
 
@@ -646,27 +657,43 @@ public class TeacherDashboard {
         Button btn = new Button(text);
         btn.setMaxWidth(Double.MAX_VALUE);
         btn.setAlignment(Pos.CENTER_LEFT);
-        btn.setPadding(new Insets(10));
-        btn.setStyle(isActive ? "-fx-background-color: #2c3e50; -fx-text-fill: white;" : "-fx-background-color: transparent; -fx-text-fill: #bdc3c7;");
+        btn.setPadding(new Insets(10, 20, 10, 20));
+        btn.setFont(Font.font("Segoe UI", 14));
+        btn.setCursor(javafx.scene.Cursor.HAND);
+
+        if (isActive) {
+            // Active Style: Darker background + Blue Left Border
+            btn.setStyle("-fx-background-color: #2c3e50; -fx-text-fill: white; -fx-border-color: transparent transparent transparent #3498db; -fx-border-width: 0 0 0 4;");
+        } else {
+            // Inactive Style: Transparent
+            btn.setStyle("-fx-background-color: transparent; -fx-text-fill: #bdc3c7;");
+        }
+
         // Hover Effect
         btn.setOnMouseEntered(e -> {
-            // Only change color if it's NOT the active button (we check style string)
-            if (!btn.getStyle().contains("#34495e")) {
+            // Only change color if it's NOT the active button
+            if (!btn.getStyle().contains("-fx-border-width: 0 0 0 4")) {
                 btn.setStyle("-fx-background-color: #3e5871; -fx-text-fill: white;");
             }
         });
         btn.setOnMouseExited(e -> {
             // Reset to inactive style if it wasn't clicked
-            if (!btn.getStyle().contains("#34495e")) {
+            if (!btn.getStyle().contains("-fx-border-width: 0 0 0 4")) {
                 btn.setStyle("-fx-background-color: transparent; -fx-text-fill: #bdc3c7;");
             }
         });
+
         return btn;
     }
 
     private void setActive(Button active, Button... others) {
-        active.setStyle("-fx-background-color: #2c3e50; -fx-text-fill: white;");
-        for (Button b : others) b.setStyle("-fx-background-color: transparent; -fx-text-fill: #bdc3c7;");
+        // Active
+        active.setStyle("-fx-background-color: #2c3e50; -fx-text-fill: white; -fx-border-color: transparent transparent transparent #3498db; -fx-border-width: 0 0 0 4;");
+
+        // Inactive
+        for (Button b : others) {
+            b.setStyle("-fx-background-color: transparent; -fx-text-fill: #bdc3c7; -fx-border-width: 0;");
+        }
     }
 
     private ImageView loadImageView(String path, double w, double h) {

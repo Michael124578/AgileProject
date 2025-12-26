@@ -15,7 +15,6 @@ public class StudentGrade {
     public String getFullName() { return fullName; }
     public double getGrade() { return grade; }
 
-    // Helper for display
     public String getGradeString() {
         return grade == 0.0 ? "-" : String.valueOf(grade);
     }

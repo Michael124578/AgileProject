@@ -9,7 +9,6 @@ import java.util.List;
 
 public class TeacherDAO {
 
-    // 1. LOGIN
     public Teacher login(String email, String password) {
         String sql = "SELECT TeacherID, FirstName, LastName, Email, Department, Password, ProfilePicPath  FROM Teachers WHERE Email = ? AND Password = CONVERT(NVARCHAR(64), HASHBYTES('SHA2_256', ?), 2)";
 
@@ -37,56 +36,6 @@ public class TeacherDAO {
             e.printStackTrace();
         }
         return null;
-    }
-
-    // 2. VIEW SCHEDULE (Courses taught by this teacher)
-    public void printTeacherSchedule(int teacherId) {
-        String sql = "SELECT c.CourseCode, c.CourseName, ta.Semester, ta.Year " +
-                "FROM TeacherAssignments ta " +
-                "JOIN Courses c ON ta.CourseID = c.CourseID " +
-                "WHERE ta.TeacherID = ?";
-
-        try (Connection conn = DatabaseManager.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
-            pstmt.setInt(1, teacherId);
-
-            try (ResultSet rs = pstmt.executeQuery()) {
-                System.out.println("--- Your Teaching Schedule ---");
-                boolean found = false;
-                while (rs.next()) {
-                    found = true;
-                    System.out.println(rs.getString("CourseCode") + ": " +
-                            rs.getString("CourseName") +
-                            " [" + rs.getString("Semester") + " " + rs.getInt("Year") + "]");
-                }
-                if (!found) System.out.println("No courses assigned yet.");
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
-
-    // 3. update profile picture
-    public boolean updateProfilePic(int teacherId, String imagePath) {
-        // FIX: Changed table from Students to Teachers, and parameter name for clarity
-        String sql = "UPDATE Teachers SET ProfilePicPath = ? WHERE TeacherID = ?";
-
-        try (Connection conn = DatabaseManager.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
-            pstmt.setString(1, imagePath);
-            pstmt.setInt(2, teacherId); // FIX: Use teacherId
-
-            int rows = pstmt.executeUpdate();
-            if(rows > 0) {
-                System.out.println("Profile picture updated!");
-                return true;
-            }
-        } catch (SQLException e) {
-            System.err.println("Error updating pic: " + e.getMessage());
-        }
-        return false;
     }
 
     public Teacher getTeacherById(int teacherId) {
@@ -128,7 +77,6 @@ public class TeacherDAO {
         }
     }
 
-    // 2. UPDATED: Update Profile
     public boolean updateProfile(int teacherId, String fName, String lName, String email, String newPassword, String dept, String picPath) {
         String sql = "UPDATE Teachers SET FirstName=?, LastName=?, Email=?, " +
                 "Password=CASE WHEN ? = '' THEN Password ELSE CONVERT(NVARCHAR(64), HASHBYTES('SHA2_256', ?), 2) END, " +
@@ -189,9 +137,6 @@ public class TeacherDAO {
         return list;
     }
 
-    // ==========================================
-    // NEW: Report Hall Issue
-    // ==========================================
     public boolean reportIssue(int teacherId, int hallId, String description) {
         String sql = "INSERT INTO HallIssues (HallID, ReporterID, ReporterType, IssueDescription, Status, ReportedDate) " +
                 "VALUES (?, ?, 'Teacher', ?, 'Open', GETDATE())";
@@ -210,7 +155,6 @@ public class TeacherDAO {
         }
     }
 
-    // 3. Get Students Enrolled in a specific Course
     public List<StudentGrade> getStudentsInCourse(int courseId) {
         List<StudentGrade> list = new ArrayList<>();
         String sql = "SELECT s.StudentID, s.FirstName, s.LastName, e.Grade " +
@@ -234,7 +178,6 @@ public class TeacherDAO {
         return list;
     }
 
-    // 4. Update Grade (THE MAGIC BUTTON)
     public boolean updateGrade(int studentId, int courseId, double newGrade) {
         // This update will trigger your SQL 'trg_AutoCalculateGPA' automatically!
         String sql = "UPDATE Enrollments SET Grade = ? WHERE StudentID = ? AND CourseID = ?";
@@ -248,8 +191,6 @@ public class TeacherDAO {
         } catch (SQLException e) { e.printStackTrace(); return false; }
     }
 
-    // 6. Get Grade Statistics for a Course
-    // Returns a Map or simple int array: [A_count, B_count, C_count, D_count, F_count]
     public int[] getGradeDistribution(int courseId) {
         int[] stats = new int[5]; // 0=A, 1=B, 2=C, 3=D, 4=F
 

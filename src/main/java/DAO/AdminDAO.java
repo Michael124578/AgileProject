@@ -14,7 +14,6 @@ import java.util.List;
 
 public class AdminDAO {
 
-    // 1. LOGIN
     public Admin login(String username, String password) {
         String sql = "SELECT AdminID, Username,FullName, PasswordHash, ProfilePicPath FROM vw_Admins WHERE Username = ? AND PasswordHash = CONVERT(NVARCHAR(64), HASHBYTES('SHA2_256', ?), 2)";
         try (Connection conn = DatabaseManager.getConnection();
@@ -32,10 +31,6 @@ public class AdminDAO {
         } catch (SQLException e) { e.printStackTrace(); }
         return null;
     }
-
-    // =========================
-    // TEACHER MANAGEMENT
-    // =========================
 
     public List<Teacher> getAllTeachers() {
         List<Teacher> list = new ArrayList<>();
@@ -105,11 +100,6 @@ public class AdminDAO {
         } catch (SQLException e) { e.printStackTrace(); return false; }
     }
 
-    // =========================
-    // HALL (ROOM) MANAGEMENT  <-- NEW SECTION
-    // =========================
-
-    // Get All Halls
     public List<Hall> getAllHalls() {
         List<Hall> list = new ArrayList<>();
         String sql = "SELECT * FROM vw_Halls";
@@ -129,7 +119,6 @@ public class AdminDAO {
         return list;
     }
 
-    // Add Hall
     public boolean addHall(String name, int capacity, String type) {
         Connection conn = null;
         try {
@@ -184,7 +173,6 @@ public class AdminDAO {
         }
     }
 
-    // Delete Hall
     public boolean deleteHall(int hallId) {
         // Note: Check constraints (Courses linked to Hall) before deleting in a real app
         String sql = "DELETE FROM Halls WHERE HallID = ?";
@@ -195,11 +183,6 @@ public class AdminDAO {
         } catch (SQLException e) { e.printStackTrace(); return false; }
     }
 
-    // =========================
-    // ISSUE MANAGEMENT
-    // =========================
-
-    // 1. Get All Reported Issues
     public List<HallIssue> getAllIssues() {
         List<HallIssue> list = new ArrayList<>();
         // Join with Halls to get the Hall Name for display
@@ -231,7 +214,6 @@ public class AdminDAO {
         return list;
     }
 
-    // 2. Mark Issue as Resolved
     public boolean resolveIssue(int issueId) {
         String sql = "UPDATE HallIssues SET Status = 'Resolved' WHERE IssueID = ?";
         try (Connection conn = DatabaseManager.getConnection();
@@ -244,11 +226,6 @@ public class AdminDAO {
         }
     }
 
-    // =========================
-    // COURSE MANAGEMENT
-    // =========================
-
-    // Get All Courses (Updated to JOIN with Halls)
     public List<Course> getAllCourses() {
         List<Course> list = new ArrayList<>();
         // Fetch HallName and HallID via JOIN
@@ -281,7 +258,6 @@ public class AdminDAO {
         return list;
     }
 
-    // Add Course (Updated to take hallId instead of String room)
     public boolean addCourse(String code, String name, int credits, String day, String start, String end, int hallId) {
         String sql = "INSERT INTO Courses (CourseCode, CourseName, Credits, DayOfWeek, StartTime, EndTime, HallID) VALUES (?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = DatabaseManager.getConnection();
@@ -309,9 +285,6 @@ public class AdminDAO {
         } catch (SQLException e) { e.printStackTrace(); return false; }
     }
 
-    // =========================
-    // ASSIGNMENTS & PROFILE
-    // =========================
     public boolean assignTeacherToCourse(int teacherId, int courseId, String semester, int year) {
         String sql = "INSERT INTO TeacherAssignments (TeacherID, CourseID, Semester, Year) VALUES (?, ?, ?, ?)";
         try (Connection conn = DatabaseManager.getConnection();
@@ -341,7 +314,6 @@ public class AdminDAO {
         }
     }
 
-    // 2. UPDATED: Update Profile (Conditional Password Logic)
     public boolean updateProfile(int adminId, String username, String fullName, String newPassword, String picPath) {
         Connection conn = null;
         try {
@@ -390,7 +362,6 @@ public class AdminDAO {
             if (conn != null) try { conn.close(); } catch (SQLException e) {}
         }
     }
-
 
     public boolean registerStudentAndParent(String sFirst, String sLast, String sEmail, String sPass,
                                             String pFirst, String pLast, String pEmail, String pPass) {
@@ -492,7 +463,6 @@ public class AdminDAO {
         return list;
     }
 
-    // 2. Add Funds to Student Wallet
     public boolean addStudentFunds(int studentId, double amount) {
         String sql = "UPDATE Students SET Wallet = Wallet + ? WHERE StudentID = ?";
         try (Connection conn = DatabaseManager.getConnection();

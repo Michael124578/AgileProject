@@ -134,7 +134,7 @@ public class StudentDashboard {
         Button hallInfoBtn = createNavButton("Hall Info", false); // <--- NEW BUTTON
         Button lmsBtn = createNavButton("LMS ->", false);
         Button transBtn = createNavButton("Transcript", false);
-        Button profileBtn = createNavButton("Profile", false);
+        Button profileBtn = createNavButton("My Profile", false);
         Button logoutBtn = createNavButton("Logout", false);
 
         // 2. Dashboard Action (Switch View)

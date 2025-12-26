@@ -5,7 +5,7 @@ public class Parent {
     private String firstName;
     private String lastName;
     private String email;
-    private int studentId; // The child's ID
+    private int studentId;
     private String studentName;
 
     public Parent(int parentId, String firstName, String lastName, String email, int studentId, String studentName) {

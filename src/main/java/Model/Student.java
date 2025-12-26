@@ -29,9 +29,6 @@ public class Student {
         this.creditsToBePaid = creditsToBePaid;
     }
 
-
-
-    // Getters
     public int getStudentId() { return studentId; }
     public String getFirstName() { return firstName; }
     public String getLastName() { return lastName; }

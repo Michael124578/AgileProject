@@ -5,7 +5,7 @@ import java.sql.Date;
 public class HallBooking {
     private int bookingId;
     private int hallId;
-    private String hallName; // For display
+    private String hallName;
     private int studentId;
     private Date bookingDate;
     private String startTime;

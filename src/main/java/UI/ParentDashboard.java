@@ -72,7 +72,6 @@ public class ParentDashboard {
         return btn;
     }
 
-    // View 1: Child's Progress (Reusing StudentDAO)
     private VBox createProgressView(Parent parent) {
         VBox content = new VBox(20);
         content.setPadding(new Insets(30));
@@ -101,7 +100,6 @@ public class ParentDashboard {
         return content;
     }
 
-    // View 2: Messaging
     private HBox createMessagingView(Parent parent) {
         HBox content = new HBox(10);
         content.setPadding(new Insets(20));

@@ -3,7 +3,7 @@ package Model;
 import java.sql.Timestamp;
 
 public class Message {
-    private String senderType; // "Parent" or "Teacher"
+    private String senderType;
     private String text;
     private Timestamp date;
 

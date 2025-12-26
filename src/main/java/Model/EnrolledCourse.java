@@ -10,7 +10,7 @@ public class EnrolledCourse {
     private String startTime;
     private String endTime;
     private String room;
-    private int hallId; // NEW FIELD
+    private int hallId;
 
     public EnrolledCourse(String code, String name, int cred, String sem, double gr, String day, String start, String end, String room, int hallId) {
         this.courseCode = code;
@@ -25,7 +25,6 @@ public class EnrolledCourse {
         this.hallId = hallId;
     }
 
-    // Existing Getters
     public String getCourseCode() { return courseCode; }
     public String getCourseName() { return courseName; }
     public int getCredits() { return credits; }
@@ -35,11 +34,6 @@ public class EnrolledCourse {
     public String getStartTime() { return startTime; }
     public String getEndTime() { return endTime; }
     public String getRoom() { return room; }
-
-    // NEW Getter
     public int getHallId() { return hallId; }
 
-    public String getGradeString() {
-        return grade == 0.0 ? "In Progress" : String.valueOf(grade);
-    }
 }

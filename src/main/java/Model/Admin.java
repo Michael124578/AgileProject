@@ -3,8 +3,8 @@ package Model;
 public class Admin {
     private int adminId;
     private String username;
-    private String fullName;    // <--- NEW
-    private String password;    // <--- NEW
+    private String fullName;
+    private String password;
     private String profilePicPath;
 
     public Admin(int adminId, String username, String fullName, String password, String profilePicPath) {

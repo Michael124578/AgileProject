@@ -5,7 +5,7 @@ import java.sql.Timestamp;
 public class HallIssue {
     private int issueId;
     private int hallId;
-    private String hallName; // Useful for display
+    private String hallName;
     private int reporterId;
     private String reporterType;
     private String issueDescription;
@@ -23,7 +23,6 @@ public class HallIssue {
         this.reportedDate = reportedDate;
     }
 
-    // Getters
     public int getIssueId() { return issueId; }
     public int getHallId() { return hallId; }
     public String getHallName() { return hallName; }

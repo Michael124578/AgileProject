@@ -15,7 +15,6 @@ public class Hall {
         this.hallType = hallType;
     }
 
-    // Getters
     public int getHallId() { return hallId; }
     public String getHallName() { return hallName; }
     public int getCapacity() { return capacity; }

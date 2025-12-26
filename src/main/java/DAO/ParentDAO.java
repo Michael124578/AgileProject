@@ -36,7 +36,6 @@ public class ParentDAO {
         return null;
     }
 
-    // Get Teachers associated with the child's courses
     public List<Teacher> getChildsTeachers(int studentId) {
         List<Teacher> list = new ArrayList<>();
         String sql = "SELECT DISTINCT t.TeacherID, t.FirstName, t.LastName, t.Email, t.Department " +
@@ -95,7 +94,6 @@ public class ParentDAO {
         return list;
     }
 
-    // For Teachers to see which parents to talk to
     public List<Parent> getParentsContactingTeacher(int teacherId) {
         List<Parent> list = new ArrayList<>();
         String sql = "SELECT DISTINCT p.ParentID, p.FirstName, p.LastName, p.Email, p.StudentID, " +
